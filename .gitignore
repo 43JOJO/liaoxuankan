@@ -1,0 +1,76 @@
+# ============================================
+# 聊·选刊 项目 .gitignore
+# ============================================
+# 关键:src/ 目录里是明文数据,绝对不能 push 到公开仓库
+# 数据原材料、中间产物、私人笔记一律屏蔽
+# ============================================
+
+# === 源数据(明文,本地维护,绝对禁止上传) ===
+src/
+*.source.js
+*.source.json
+
+# === 数据原材料(CSSCI/AMI 报告、整理中间产物) ===
+data-sources/
+*.docx
+new-journals-output.json
+*-output.json
+*-temp.json
+
+# === 旧版备份(全部屏蔽) ===
+*.bak
+*.bak2
+*.bak3
+*.bak4
+*.bak5
+*.bak6
+*.bak7
+*.bak8
+*.bak_audit
+*.bak_cssci
+*.bak_dedup
+*.bak_final
+*.bak_patches
+*.bak_xb
+*.backup
+
+# === 数据加工工具脚本(本地用,无需公开) ===
+add-xuebao2.js
+apply-patches.js
+dedup.js
+gen-new-journals.js
+sync-cnki.js
+
+# === 临时文件 ===
+*.tmp
+*~
+*.log
+
+# === 操作系统 ===
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# === 编辑器配置 ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === Node.js ===
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# === 私人文档 ===
+NOTES.md
+TODO.md
+*.txt
+!LICENSE.txt
+私人笔记.md
+维护手册.md
+
+# === 误命名的 gitignore(防止再次出现) ===
+gitignore
