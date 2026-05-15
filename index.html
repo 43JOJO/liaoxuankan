@@ -1377,8 +1377,22 @@ function getEaseScore(journal) {
   else score += 4;
 
   // 4. 审稿速度 (0-15)：越快越容易
-  const m = cycle.match(/(\d+)/);
-  const minM = m ? parseInt(m[1]) : 6;
+  // 提取所有"数字+单位"对，转成月份，取最短值
+  let minMonths = null;
+  const unitREs = [
+    { re: /(\d+(?:\.\d+)?)\s*天/g, scale: 1/30 },
+    { re: /(\d+(?:\.\d+)?)\s*周/g, scale: 1/4.3 },
+    { re: /(\d+(?:\.\d+)?)\s*个?\s*月/g, scale: 1 },
+    { re: /(\d+(?:\.\d+)?)\s*年/g, scale: 12 },
+  ];
+  for (const {re, scale} of unitREs) {
+    let m2;
+    while ((m2 = re.exec(cycle)) !== null) {
+      const months = parseFloat(m2[1]) * scale;
+      if (minMonths === null || months < minMonths) minMonths = months;
+    }
+  }
+  const minM = minMonths !== null ? Math.round(minMonths) : 6;
   if (minM <= 1) score += 15;
   else if (minM <= 2) score += 12;
   else if (minM <= 3) score += 8;
@@ -1442,7 +1456,7 @@ function determineTier(matchScore, journal) {
   const cl = journal.catalogLevel || '';
   const ease = getEaseScore(journal);
   const isTop = (cl === 'CSSCI来源刊' || cl === 'SSCI' || cl === 'A&HCI' || cl === 'AMI顶级' || cl === 'AMI权威');
-  const isCore = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI核心';
+  const isCore = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI核心' || cl === 'AMI扩展';
   const isEntry = cl === '普通期刊' || cl.includes('AMI入库') || cl.includes('AMI职院刊');
 
   // 冲刺：高匹配 + 顶级/核心期刊
@@ -2219,7 +2233,7 @@ function buildJournalCard(item) {
       ${journal.articlesPerIssue ? `<span>📖 约${journal.articlesPerIssue}篇/期</span>` : ''}
       ${journal.minPages ? `<span>📝 ${journal.minPages}版起发${journal.charsPerPage ? ' · ' + journal.charsPerPage : ''}</span>` : ''}
       <span>💰 ${journal.pageFee || '无版面费'}</span>
-      ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}
+      ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId ? `<a href="https://wanweixueshu.com/journal/detail/${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
     </div>
     <div class="jc-keywords">${kwHtml}</div>
     ${reasonHtml}
@@ -2288,6 +2302,7 @@ function showDetail(journal, item) {
       <dt>官网</dt><dd>${journal.officialSite ? `<a href="${journal.officialSite}" target="_blank" rel="noopener" style="color:var(--primary);">${journal.officialSite}</a>` : '无'}</dd>
     </dl>
     ${buildCnkiDataPanel(journal)}
+    ${buildWanweiPanel(journal)}
     ${buildAuthorComposition(journal)}
     ${item ? buildUserMatchInsight(journal, window.currentProfile || {}) : ''}
     ${item ? buildColumnMatch(journal, item) : ''}
@@ -2683,7 +2698,79 @@ function buildCnkiDataPanel(journal) {
   `;
 }
 
+function buildWanweiPanel(journal) {
+  const reviews = journal.wanweiReviews;
+  const hasReviews = reviews && reviews.length > 0;
+  const hasStats = journal.wanweiReviewStats;
+  const hasWanwei = journal.wanweiId;
+
+  if (!hasWanwei) {
+    return '<div style="font-size:0.75rem;color:#bbb;text-align:center;margin:8px 0;">暂无万维书刊网点评数据</div>';
+  }
+
+  let html = '';
+  html += '<div style="background:#fdf8f0;border:1px solid #f0e4ce;border-radius:8px;padding:12px 14px;margin:10px 0;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+  html += '<span style="font-weight:600;color:#8b6914;font-size:0.82rem;">💬 万维书刊网点评</span>';
+  html += '<a href="https://wanweixueshu.com/journal/detail/' + journal.wanweiId + '" target="_blank" rel="noopener" style="font-size:0.75rem;color:#b8860b;text-decoration:none;font-weight:500;">→ 在万维书刊网查看完整点评</a>';
+  html += '</div>';
+
+  if (hasStats) {
+    var s = journal.wanweiReviewStats;
+    html += '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.8rem;margin-bottom:10px;">';
+    html += '<span style="color:#666;">共 <strong>' + (s.total || reviews.length) + '</strong> 条点评</span>';
+    if (s.reviewTimeAvg) html += '<span style="color:#666;">平均审稿 <strong>' + s.reviewTimeAvg + '个月</strong></span>';
+    if (s.reviewTimeMin && s.reviewTimeMax) html += '<span style="color:#666;">范围 ' + s.reviewTimeMin + '-' + s.reviewTimeMax + '个月</span>';
+    if (s.acceptanceRate !== undefined) {
+      var rateColor = s.acceptanceRate >= 50 ? '#2e7d32' : s.acceptanceRate >= 25 ? '#e67e22' : '#c62828';
+      html += '<span style="color:' + rateColor + ';font-weight:600;">录用率约' + s.acceptanceRate + '%</span>';
+    }
+    if (s.difficultyDistribution) {
+      var dist = Object.entries(s.difficultyDistribution).map(function(e) { return e[0] + '(' + e[1] + ')'; }).join(' ');
+      html += '<span style="color:#999;">难度: ' + dist + '</span>';
+    }
+    html += '</div>';
+  }
+
+  if (hasReviews) {
+    var showReviews = reviews.slice(0, 3);
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    showReviews.forEach(function(r) {
+      html += '<div style="background:#fff;border:1px solid #f0e4ce;border-radius:6px;padding:8px 10px;font-size:0.8rem;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">';
+      if (r.date) html += '<span style="color:#999;font-size:0.72rem;">' + r.date + '</span>';
+      if (r.degree) html += '<span style="background:#e3f2fd;color:#1565c0;padding:1px 6px;border-radius:8px;font-size:0.7rem;">' + r.degree + '</span>';
+      if (r.accepted) {
+        var ac = r.accepted;
+        var acColor = ac.indexOf('录用') >= 0 ? '#2e7d32' : ac.indexOf('拒') >= 0 ? '#c62828' : '#e67e22';
+        html += '<span style="background:#fff;color:' + acColor + ';padding:1px 6px;border:1px solid ' + acColor + ';border-radius:8px;font-size:0.7rem;font-weight:600;">' + ac + '</span>';
+      }
+      if (r.reviewTime) html += '<span style="color:#666;font-size:0.72rem;">审稿' + r.reviewTime + '</span>';
+      html += '</div>';
+      if (r.topic) html += '<span style="color:#b8860b;font-size:0.72rem;margin-right:6px;">[' + r.topic + ']</span>';
+      if (r.content) {
+        var shortContent = r.content.length > 120 ? r.content.substring(0, 120) + '...' : r.content;
+        html += '<span style="color:#444;line-height:1.5;">' + shortContent + '</span>';
+      }
+      html += '</div>';
+    });
+    if (reviews.length > 3) {
+      html += '<div style="text-align:center;font-size:0.72rem;color:#999;">... 还有 ' + (reviews.length - 3) + ' 条点评，<a href="https://wanweixueshu.com/journal/detail/' + journal.wanweiId + '" target="_blank" rel="noopener" style="color:#b8860b;">前往万维查看全部</a></div>';
+    }
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
 function buildAuthorComposition(journal) {
+  // 优先使用万维书刊网真实点评统计
+  const ad = journal.authorDistribution;
+  if (ad && ad.degrees && ad.sampleSize >= 3) {
+    return buildRealAuthorComposition(ad);
+  }
+  // 回退到旧的推测模式
   const comp = inferAuthorComposition(journal);
   if (!comp) return '';
 
@@ -2702,6 +2789,54 @@ function buildAuthorComposition(journal) {
   }).join('');
 
   return '<div style="background:#fafafa;border:1px solid #eee;border-radius:8px;padding:12px 14px;margin:10px 0;"><div style="font-weight:600;color:#666;font-size:0.82rem;margin-bottom:10px;">📊 作者群体分布参考<span style="font-weight:400;color:#999;font-size:0.85em;margin-left:6px;">（基于期刊政策推测，非真实统计）</span></div>'+barHtml+'<div style="font-size:0.72rem;color:#aaa;margin-top:8px;padding-top:6px;border-top:1px dashed #e0d5c7;line-height:1.5;">单位层次：985/211 ~'+institution.elite+'% · 普通本科 ~'+institution.normal+'% · 其他 ~'+institution.other+'%<br>※ 仅供参考，非真实统计；如该刊已通过知网核验，可参考上方"当期独作率"真实数据</div></div>';
+}
+
+function buildRealAuthorComposition(ad) {
+  const deg = ad.degrees || {};
+  const tit = ad.titles || {};
+  const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
+
+  // Map degree types to display categories
+  const phd = (deg['博士'] || 0) + (deg['在读博士'] || 0) + (deg['博士后'] || 0);
+  const master = (deg['硕士'] || 0) + (deg['在读硕士'] || 0);
+  const other = total - phd - master;
+  const phdPct = Math.round(phd / total * 100);
+  const masterPct = Math.round(master / total * 100);
+  const otherPct = 100 - phdPct - masterPct;
+
+  const degreeBars = [
+    { label: '博士（含在读）', pct: phdPct, color: '#1565c0' },
+    { label: '硕士（含在读）', pct: masterPct, color: '#2e7d32' },
+    { label: '其他', pct: Math.max(0, otherPct), color: '#999' }
+  ];
+
+  const barHtml = degreeBars.map(b =>
+    '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;margin-bottom:5px;"><div style="width:120px;color:#666;flex-shrink:0;">'+b.label+'</div><div style="flex:1;height:9px;background:#f0f0f0;border-radius:4px;overflow:hidden;"><div style="width:'+b.pct+'%;height:100%;background:'+b.color+';transition:width 0.4s;"></div></div><div style="width:46px;text-align:right;color:#666;font-weight:600;">'+b.pct+'%</div></div>'
+  ).join('');
+
+  // Build degree detail line
+  const degDetail = Object.entries(deg).sort((a,b)=>b[1]-a[1]).map(([k,v]) => k+v+'人').join(' · ');
+
+  // Build title detail line if available
+  let titleHtml = '';
+  if (Object.keys(tit).length > 0) {
+    const titleDetail = Object.entries(tit).sort((a,b)=>b[1]-a[1]).map(([k,v]) => k+v+'人').join(' · ');
+    titleHtml = '<div style="font-size:0.78rem;color:#888;margin-top:4px;">职称分布：' + titleDetail + '</div>';
+  }
+
+  // Calculate student-friendly signal
+  let signal = '';
+  if (masterPct >= 30) signal = ' 🟢 硕士友好';
+  else if (phdPct >= 50 && masterPct >= 15) signal = ' 🟡 博士为主，硕士有一定空间';
+  else if (phdPct >= 60) signal = ' 🔴 博士及以上为主';
+
+  return '<div style="background:#f0faf0;border:1px solid #c8e6c9;border-radius:8px;padding:12px 14px;margin:10px 0;">'
+    + '<div style="font-weight:600;color:#2e7d32;font-size:0.82rem;margin-bottom:10px;">📊 作者群体分布<span style="font-weight:400;color:#666;font-size:0.85em;margin-left:6px;">（万维书刊网'+ad.sampleSize+'条点评统计）</span><span style="font-weight:600;color:#555;font-size:0.82rem;margin-left:8px;">'+signal+'</span></div>'
+    + barHtml
+    + '<div style="font-size:0.78rem;color:#888;margin-top:4px;">学位分布：' + degDetail + '</div>'
+    + titleHtml
+    + '<div style="font-size:0.68rem;color:#aaa;margin-top:6px;padding-top:4px;border-top:1px dashed #e0d5c7;">数据来源：万维书刊网网友点评投稿身份统计（更新于'+ (ad.lastUpdated || '近期') +'）</div>'
+    + '</div>';
 }
 
 function buildUserMatchInsight(journal, profile) {

@@ -40,11 +40,30 @@ apply-patches.js
 dedup.js
 gen-new-journals.js
 sync-cnki.js
+cnki-skill.js
+merge-wanwei-data.js
+scrape-wanweixueshu.js
+rescrape-details.js
+scrape-eshukan.js
+rescrape-eshukan-reviews.js
+rescrape-unmatched-eshukan.js
+rescrape-skipped-eshukan.js
+enrich-journal-data.js
+fix-reviews-data.js
 
 # === 临时文件 ===
 *.tmp
 *~
 *.log
+chrome-profile/
+wanweixueshu-art-data.json
+wanweixueshu-progress.json
+eshukan-data.json
+eshukan-data.json.bak*
+eshukan-progress.json
+eshukan-unmatched-progress.json
+eshukan-data.json
+eshukan-progress.json
 
 # === 操作系统 ===
 .DS_Store
@@ -55,6 +74,7 @@ $RECYCLE.BIN/
 # === 编辑器配置 ===
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 
@@ -62,6 +82,7 @@ $RECYCLE.BIN/
 node_modules/
 npm-debug.log
 yarn-error.log
+package.json
 package-lock.json
 
 # === 私人文档 ===
