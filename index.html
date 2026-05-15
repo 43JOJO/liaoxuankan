@@ -2368,11 +2368,6 @@ function buildJournalCard(item) {
 
   const matchColor = matchScore >= 70 ? '#2e7d32' : matchScore >= 45 ? '#e67e22' : '#999';
 
-  const rep = journal.reputation;
-  const repBadge = rep && rep.score !== undefined
-    ? `<span style="font-size:0.7rem;color:${rep.score >= 55 ? '#2e7d32' : rep.score >= 35 ? '#f9a825' : '#e65100'};margin-left:4px;" title="风评${rep.label}(${rep.score}分) — 基于${rep.sampleSize}条万维书刊网点评">${rep.score >= 55 ? '👍' : rep.score >= 35 ? '📝' : '⚠️'} ${rep.score}分</span>`
-    : '';
-
   const warningHtml = warnings.length > 0
     ? `<div class="filter-note" style="margin-top:6px;">⚠ ${warnings.join('；')}</div>`
     : '';
@@ -2404,7 +2399,7 @@ function buildJournalCard(item) {
     <div class="jc-header">
       <div>
         <span class="jc-name">${journal.name}</span><button class="jc-copy-btn" onclick="event.stopPropagation();copyJournalName(this,'${journal.name.replace(/'/g,"\\'")}')">📋 复制</button>
-        <span class="jc-level">${levelBadge} ${freqBadge} ${repBadge}</span>
+        <span class="jc-level">${levelBadge} ${freqBadge}</span>
       </div>
       <span class="jc-tier-tag ${tierTagClass[tier]}">${tierLabels[tier]}${(() => {
         const r = getDifficultyForUser(journal, window.currentProfile || {});
@@ -2419,6 +2414,16 @@ function buildJournalCard(item) {
       ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId ? `<a href="https://www.eshukan.com/displayj.aspx?jid=${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
     </div>
     <div class="jc-keywords">${kwHtml}</div>
+    ${(() => {
+      const rep = journal.reputation;
+      if (!rep || rep.score === undefined) return '';
+      const s = rep.score;
+      const bg = s >= 75 ? '#e8f5e9' : s >= 55 ? '#f1f8e9' : s >= 35 ? '#fffde7' : '#fff3e0';
+      const color = s >= 75 ? '#2e7d32' : s >= 55 ? '#558b2f' : s >= 35 ? '#f9a825' : '#e65100';
+      const icon = s >= 75 ? '🌟' : s >= 55 ? '👍' : s >= 35 ? '📝' : '⚠️';
+      const label = s >= 75 ? '口碑优秀' : s >= 55 ? '口碑良好' : s >= 35 ? '口碑一般' : '争议较多';
+      return '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;background:'+bg+';border-radius:6px;font-size:0.78rem;"><span>'+icon+'</span><span style="font-weight:600;color:'+color+';">风评 '+label+' · '+s+'分</span><span style="color:#999;font-size:0.72rem;">— 基于'+rep.sampleSize+'条万维书刊网点评</span></div>';
+    })()}
     ${reasonHtml}
     ${warningHtml}
     <div class="jc-footer">
