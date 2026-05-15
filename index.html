@@ -1479,7 +1479,16 @@ function getEaseScore(journal) {
     // 录用率 < 10% 不加分也不减分（信息不充分）
   }
 
-  // 10. 万维书刊网作者分布-学生友好度 (0-10)
+  // 10. 风评口碑 (0-10)：口碑越好越容易
+  const rep = journal.reputation;
+  if (rep && rep.score !== undefined) {
+    if (rep.score >= 75) score += 10;
+    else if (rep.score >= 55) score += 7;
+    else if (rep.score >= 35) score += 3;
+    else score += 0; // 争议较多不加分
+  }
+
+  // 11. 万维书刊网作者分布-学生友好度 (0-10)
   const ad = journal.authorDistribution;
   if (ad && ad.degrees) {
     const deg = ad.degrees || {};
@@ -2359,6 +2368,11 @@ function buildJournalCard(item) {
 
   const matchColor = matchScore >= 70 ? '#2e7d32' : matchScore >= 45 ? '#e67e22' : '#999';
 
+  const rep = journal.reputation;
+  const repBadge = rep && rep.score !== undefined
+    ? `<span style="font-size:0.7rem;color:${rep.score >= 55 ? '#2e7d32' : rep.score >= 35 ? '#f9a825' : '#e65100'};margin-left:4px;" title="风评${rep.label}(${rep.score}分) — 基于${rep.sampleSize}条万维书刊网点评">${rep.score >= 55 ? '👍' : rep.score >= 35 ? '📝' : '⚠️'} ${rep.score}分</span>`
+    : '';
+
   const warningHtml = warnings.length > 0
     ? `<div class="filter-note" style="margin-top:6px;">⚠ ${warnings.join('；')}</div>`
     : '';
@@ -2390,7 +2404,7 @@ function buildJournalCard(item) {
     <div class="jc-header">
       <div>
         <span class="jc-name">${journal.name}</span><button class="jc-copy-btn" onclick="event.stopPropagation();copyJournalName(this,'${journal.name.replace(/'/g,"\\'")}')">📋 复制</button>
-        <span class="jc-level">${levelBadge} ${freqBadge}</span>
+        <span class="jc-level">${levelBadge} ${freqBadge} ${repBadge}</span>
       </div>
       <span class="jc-tier-tag ${tierTagClass[tier]}">${tierLabels[tier]}${(() => {
         const r = getDifficultyForUser(journal, window.currentProfile || {});
@@ -2471,6 +2485,7 @@ function showDetail(journal, item) {
       <dt>官网</dt><dd>${journal.officialSite ? `<a href="${journal.officialSite}" target="_blank" rel="noopener" style="color:var(--primary);">${journal.officialSite}</a>` : '无'}</dd>
     </dl>
     ${buildCnkiDataPanel(journal)}
+    ${buildReputationBadge(journal)}
     ${buildWanweiPanel(journal)}
     ${buildAuthorComposition(journal)}
     ${item ? buildUserMatchInsight(journal, window.currentProfile || {}) : ''}
@@ -2792,6 +2807,15 @@ function getDifficultyForUser(journal, profile) {
       if (ar >= 50 && downgrade[difficulty]) difficulty = downgrade[difficulty];
       if (ar < 5 && upgrade[difficulty]) difficulty = upgrade[difficulty];
     }
+
+    // 风评调整：口碑好降难度，口碑差升难度
+    const rep = journal.reputation;
+    if (rep && rep.score !== undefined) {
+      const downgrade = { 极大: '较大', 较大: '可尝试', 可尝试: '友好' };
+      const upgrade = { 友好: '可尝试', 可尝试: '较大', 较大: '极大' };
+      if (rep.score >= 70 && downgrade[difficulty]) difficulty = downgrade[difficulty];
+      if (rep.score < 30 && upgrade[difficulty]) difficulty = upgrade[difficulty];
+    }
   } else {
     // 回退到 inferAuthorComposition（无真实数据时）
     const comp = inferAuthorComposition(journal);
@@ -2944,6 +2968,24 @@ function buildCnkiDataPanel(journal) {
       </div>
     </div>
   `;
+}
+
+function buildReputationBadge(journal) {
+  const rep = journal.reputation;
+  if (!rep || rep.score === undefined) return '';
+  const score = rep.score;
+  let bg, color, icon, label;
+  if (score >= 75) { bg = '#e8f5e9'; color = '#2e7d32'; icon = '🌟'; label = '口碑优秀'; }
+  else if (score >= 55) { bg = '#f1f8e9'; color = '#558b2f'; icon = '👍'; label = '口碑良好'; }
+  else if (score >= 35) { bg = '#fffde7'; color = '#f9a825'; icon = '📝'; label = '口碑一般'; }
+  else { bg = '#fff3e0'; color = '#e65100'; icon = '⚠️'; label = '争议较多'; }
+
+  return '<div style="background:'+bg+';border:1px solid '+color+'33;border-radius:8px;padding:8px 14px;margin:8px 0;display:flex;align-items:center;gap:10px;font-size:0.82rem;">'
+    + '<span style="font-size:1.2rem;">'+icon+'</span>'
+    + '<div style="flex:1;"><span style="font-weight:700;color:'+color+';">风评：'+label+'</span>'
+    + '<span style="color:#999;font-size:0.78rem;margin-left:8px;">（基于'+rep.sampleSize+'条万维书刊网点评分析）</span></div>'
+    + '<span style="font-weight:700;color:'+color+';font-size:1rem;">'+score+'分</span>'
+    + '</div>';
 }
 
 function buildWanweiPanel(journal) {
