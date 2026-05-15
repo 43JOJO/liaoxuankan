@@ -1280,7 +1280,29 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   }
 
   // 领域匹配加成（最多 +20%，含专业方向加成）
-  const domainBoost = computeDomainMatch(paperText, journal, discipline) * 20;
+  let domainBoost = computeDomainMatch(paperText, journal, discipline) * 20;
+
+  // 万维书刊网 review topics 加成（最多 +15%）
+  let reviewTopicBoost = 0;
+  const preferredTopics = journal.preferredTopics || '';
+  const rtMatch = preferredTopics.match(/【网友投稿主题[：:]\s*([^】]+)】/);
+  if (rtMatch) {
+    const reviewTopics = rtMatch[1].split(/[、，,]/).map(t => t.replace(/\(\d+次\)/, '').trim()).filter(t => t.length >= 2);
+    const expandedTextLower = expandedText;
+    let topicHits = 0;
+    for (const rt of reviewTopics) {
+      if (expandedTextLower.includes(rt.toLowerCase())) {
+        topicHits++;
+      } else {
+        // Fuzzy: check individual chars in the topic
+        for (const t of tokenize(rt.toLowerCase())) {
+          if (t.length >= 2 && expandedTextLower.includes(t)) { topicHits += 0.5; break; }
+        }
+      }
+    }
+    reviewTopicBoost = Math.round(Math.min(15, topicHits / Math.max(1, reviewTopics.length) * 15));
+  }
+  domainBoost += reviewTopicBoost;
 
   // 单位层次匹配加成（最多 +10%）
   let unitBoost = 0;
@@ -1376,27 +1398,38 @@ function getEaseScore(journal) {
   else if (aps >= 15) score += 8;
   else score += 4;
 
-  // 4. 审稿速度 (0-15)：越快越容易
-  // 提取所有"数字+单位"对，转成月份，取最短值
-  let minMonths = null;
-  const unitREs = [
-    { re: /(\d+(?:\.\d+)?)\s*天/g, scale: 1/30 },
-    { re: /(\d+(?:\.\d+)?)\s*周/g, scale: 1/4.3 },
-    { re: /(\d+(?:\.\d+)?)\s*个?\s*月/g, scale: 1 },
-    { re: /(\d+(?:\.\d+)?)\s*年/g, scale: 12 },
-  ];
-  for (const {re, scale} of unitREs) {
-    let m2;
-    while ((m2 = re.exec(cycle)) !== null) {
-      const months = parseFloat(m2[1]) * scale;
-      if (minMonths === null || months < minMonths) minMonths = months;
+  // 4. 审稿速度 (0-15)：越快越容易，优先用万维真实数据
+  const stats = journal.wanweiReviewStats;
+  if (stats && stats.reviewTimeAvg) {
+    const avgDays = stats.reviewTimeAvg;
+    if (avgDays <= 7) score += 15;
+    else if (avgDays <= 15) score += 13;
+    else if (avgDays <= 30) score += 11;
+    else if (avgDays <= 60) score += 8;
+    else if (avgDays <= 90) score += 5;
+    else score += 3;
+  } else {
+    // 回退：从 reviewCycle 文本推断
+    let minMonths = null;
+    const unitREs = [
+      { re: /(\d+(?:\.\d+)?)\s*天/g, scale: 1/30 },
+      { re: /(\d+(?:\.\d+)?)\s*周/g, scale: 1/4.3 },
+      { re: /(\d+(?:\.\d+)?)\s*个?\s*月/g, scale: 1 },
+      { re: /(\d+(?:\.\d+)?)\s*年/g, scale: 12 },
+    ];
+    for (const {re, scale} of unitREs) {
+      let m2;
+      while ((m2 = re.exec(cycle)) !== null) {
+        const months = parseFloat(m2[1]) * scale;
+        if (minMonths === null || months < minMonths) minMonths = months;
+      }
     }
+    const minM = minMonths !== null ? Math.round(minMonths) : 6;
+    if (minM <= 1) score += 15;
+    else if (minM <= 2) score += 12;
+    else if (minM <= 3) score += 8;
+    else score += 4;
   }
-  const minM = minMonths !== null ? Math.round(minMonths) : 6;
-  if (minM <= 1) score += 15;
-  else if (minM <= 2) score += 12;
-  else if (minM <= 3) score += 8;
-  else score += 4;
 
   // 5. 版面费 (0-10)：免费更友好
   if (!journal.pageFee) score += 10;
@@ -1436,6 +1469,29 @@ function getEaseScore(journal) {
     }
   }
 
+  // 9. 万维书刊网录用率 (0-12)：真实录用率越高越容易
+  if (stats && stats.acceptanceRate !== undefined) {
+    const ar = stats.acceptanceRate;
+    if (ar >= 50) score += 12;
+    else if (ar >= 35) score += 9;
+    else if (ar >= 20) score += 6;
+    else if (ar >= 10) score += 3;
+    // 录用率 < 10% 不加分也不减分（信息不充分）
+  }
+
+  // 10. 万维书刊网作者分布-学生友好度 (0-10)
+  const ad = journal.authorDistribution;
+  if (ad && ad.degrees) {
+    const deg = ad.degrees || {};
+    const total = Object.values(deg).reduce((a,b)=>a+b, 0);
+    const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
+    const masterPct = total > 0 ? masterCount / total * 100 : 0;
+    if (masterPct >= 50) score += 10;
+    else if (masterPct >= 30) score += 7;
+    else if (masterPct >= 15) score += 4;
+    else if (masterPct >= 5) score += 1;
+  }
+
   return score;
 }
 
@@ -1459,23 +1515,52 @@ function determineTier(matchScore, journal) {
   const isCore = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI核心' || cl === 'AMI扩展';
   const isEntry = cl === '普通期刊' || cl.includes('AMI入库') || cl.includes('AMI职院刊');
 
+  // 万维书刊网录用率调整：高录用率降半级，极低录用率升半级
+  const stats = journal.wanweiReviewStats;
+  const acceptanceRate = stats && stats.acceptanceRate !== undefined ? stats.acceptanceRate : null;
+  let tierAdjust = 0;
+  if (acceptanceRate !== null && stats.total >= 3) {
+    if (acceptanceRate >= 50) tierAdjust = -1; // 录用率高 → 降一级（更容易）
+    else if (acceptanceRate < 5) tierAdjust = 1;  // 录用率极低 → 升一级（更难）
+  }
+
+  // 学生友好度调整：硕士占比高 → 对学生降一级
+  const ad = journal.authorDistribution;
+  if (ad && ad.degrees) {
+    const deg = ad.degrees || {};
+    const total = Object.values(deg).reduce((a,b)=>a+b, 0);
+    const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
+    const masterPct = total > 0 ? masterCount / total * 100 : 0;
+    if (masterPct >= 40) tierAdjust = Math.min(tierAdjust, -1); // 硕士友好，降级
+  }
+
+  // Helper: apply tier adjustment
+  function adjusted(tier) {
+    if (tierAdjust === 0) return tier;
+    if (tierAdjust < 0 && tier === 'reach') return 'match';
+    if (tierAdjust < 0 && tier === 'match') return 'safe';
+    if (tierAdjust > 0 && tier === 'match') return 'reach';
+    if (tierAdjust > 0 && tier === 'safe') return 'match';
+    return tier;
+  }
+
   // 冲刺：高匹配 + 顶级/核心期刊
-  if (matchScore >= 50 && isTop) return 'reach';
-  if (matchScore >= 55 && isCore) return 'reach';
+  if (matchScore >= 50 && isTop) return adjusted('reach');
+  if (matchScore >= 55 && isCore) return adjusted('reach');
 
   // 匹配：中等匹配 + 核心期刊，或高匹配 + 扩展期刊
-  if (matchScore >= 40 && isCore) return 'match';
-  if (matchScore >= 45 && !isTop && !isEntry) return 'match';
+  if (matchScore >= 40 && isCore) return adjusted('match');
+  if (matchScore >= 45 && !isTop && !isEntry) return adjusted('match');
 
   // 保底：容易发表（ease>=60）且有基本匹配（>=15）
-  if (ease >= 60 && matchScore >= 15) return 'safe';
+  if (ease >= 60 && matchScore >= 15) return adjusted('safe');
   // 入门级期刊，非常容易发表
-  if (ease >= 70 && matchScore >= 10) return 'safe';
+  if (ease >= 70 && matchScore >= 10) return adjusted('safe');
   // 有一定匹配的普通期刊
-  if (isEntry && matchScore >= 20) return 'safe';
+  if (isEntry && matchScore >= 20) return adjusted('safe');
   // 兜底
-  if (matchScore >= 25 && ease >= 40) return 'safe';
-  if (matchScore >= 18 && ease >= 55) return 'safe';
+  if (matchScore >= 25 && ease >= 40) return adjusted('safe');
+  if (matchScore >= 18 && ease >= 55) return adjusted('safe');
 
   return null;
 }
@@ -1512,8 +1597,27 @@ function checkConstraints(journal, profile) {
     }
   }
 
-  // 实际作者画像：差距过大直接拦截
-  if (journal.realAuthorProfile && profile.identity) {
+  // 实际作者画像：优先用 authorDistribution 真实数据，回退文本推断
+  if (journal.authorDistribution && journal.authorDistribution.degrees && profile.identity) {
+    const ad = journal.authorDistribution;
+    const deg = ad.degrees || {};
+    const total = Object.values(deg).reduce((a,b)=>a+b, 0);
+    const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
+    const phdCount = (deg['博士']||0) + (deg['在读博士']||0) + (deg['博士后']||0);
+    const masterPct = total > 0 ? masterCount / total * 100 : 0;
+    const phdPct = total > 0 ? phdCount / total * 100 : 0;
+
+    if (profile.identity === '本科生' && masterPct < 5 && phdPct > 60 && !supervisorAvailable) {
+      blocked = true;
+      warnings.push('该刊实际投稿者中博士占' + Math.round(phdPct) + '%，本科生极少。建议有导师支持后再试');
+    } else if (profile.identity === '硕士生' && masterPct < 10 && phdPct > 75 && !supervisorAvailable) {
+      blocked = true;
+      warnings.push('该刊实际投稿者以博士为主(' + Math.round(phdPct) + '%)，硕士独作极难。建议有导师通讯支持后再投');
+    } else if (profile.identity === '硕士生' && masterPct < 20 && phdPct > 60 && !supervisorAvailable) {
+      warnings.push('该刊硕士独作比例较低(约' + Math.round(masterPct) + '%)，竞争较大，建议有导师支持');
+    }
+  } else if (journal.realAuthorProfile && profile.identity) {
+    // 回退：文本推断（无 authorDistribution 数据时）
     const rp = journal.realAuthorProfile;
     if (profile.identity === '本科生' && (rp.includes('教授为主') || rp.includes('95%以上') || rp.includes('基本不')) && !rp.includes('学生') && !rp.includes('无要求')) {
       blocked = true;
@@ -1542,14 +1646,25 @@ function checkConstraints(journal, profile) {
     }
   }
 
-  // 时间约束
-  if (profile.timeline && journal.reviewCycle) {
-    const cycleStr = journal.reviewCycle;
-    const nums = cycleStr.match(/\d+/g);
-    if (nums && nums.length >= 2) {
-      const maxMonths = parseInt(nums[1]);
-      if (parseInt(profile.timeline) < maxMonths) {
-        warnings.push(`审稿周期(${cycleStr})可能超出你的时间要求`);
+  // 时间约束：优先用万维真实审稿周期
+  if (profile.timeline) {
+    const statsRT = journal.wanweiReviewStats;
+    let maxDays = null;
+    if (statsRT && statsRT.reviewTimeMax) {
+      maxDays = statsRT.reviewTimeMax;
+    } else if (journal.reviewCycle) {
+      // 回退：从 reviewCycle 文本推断
+      const cycleStr = journal.reviewCycle;
+      const nums = cycleStr.match(/\d+/g);
+      if (nums && nums.length >= 2) {
+        maxDays = parseInt(nums[1]) * 30; // assume months → days
+      }
+    }
+    if (maxDays !== null) {
+      const timelineDays = parseInt(profile.timeline) * 30;
+      const maxDisplay = maxDays >= 60 ? Math.round(maxDays/30) + '个月' : maxDays + '天';
+      if (timelineDays < maxDays) {
+        warnings.push('审稿周期(' + maxDisplay + ')可能超出你的时间要求(' + profile.timeline + '个月)');
       }
     }
   }
