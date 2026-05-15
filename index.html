@@ -1874,8 +1874,13 @@ function applyFiltersAndRender() {
         cmp = (levelRank[a.journal.catalogLevel] || 0) - (levelRank[b.journal.catalogLevel] || 0);
         break;
       case 'review': {
-        const getMinMonths = (cycle) => { const n = (cycle || '').match(/\d+/); return n ? parseInt(n[0]) : 99; };
-        cmp = getMinMonths(a.journal.reviewCycle) - getMinMonths(b.journal.reviewCycle);
+        const getReviewDays = (j) => {
+          const st = j.wanweiReviewStats;
+          if (st && st.reviewTimeAvg) return st.reviewTimeAvg;
+          const cycle = j.reviewCycle || '';
+          const n = cycle.match(/\d+/); return n ? parseInt(n[0]) * 30 : 999;
+        };
+        cmp = getReviewDays(a.journal) - getReviewDays(b.journal);
         break;
       }
       case 'articles':
@@ -2018,39 +2023,64 @@ function buildRecommendReasons(journal, item) {
     }
   }
 
-  // 维度 4：身份适配（仅当用户填了身份）
-  if (profile.identity && journal.authorRequirement) {
-    const req = journal.authorRequirement;
+  // 维度 4：身份适配（优先用 authorDistribution 真实数据）
+  if (profile.identity) {
     const id = profile.identity;
     const supervisorAvailable = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
     const supervisorTail = profile.supervisor === 'maybe' ? '（待确认）' : '';
     let desc = '';
+    let strength = 6;
 
-    if (req.includes('无硬性') || req.includes('无身份')) {
-      desc = '该刊无身份限制，适合所有作者';
-    } else if (id === '教授' || id === '副教授') {
-      desc = '资深作者身份，符合该刊偏好';
-    } else if (id === '讲师') {
-      // 讲师按"高于硕士、低于副教授"处理
-      if (req.includes('教授') && !req.includes('副教授')) {
-        desc = '讲师身份，建议合作发表或挂名通讯';
-      } else {
-        desc = '讲师独作可投';
+    // 优先用真实分布
+    const ad = journal.authorDistribution;
+    if (ad && ad.degrees && ad.sampleSize >= 3) {
+      const deg = ad.degrees;
+      const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
+      const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
+      const phdCount = (deg['博士']||0) + (deg['在读博士']||0);
+      const masterPct = Math.round(masterCount / total * 100);
+      const phdPct = Math.round(phdCount / total * 100);
+
+      if (id === '硕士生') {
+        if (masterPct >= 40) {
+          desc = `真实投稿中硕士占${masterPct}%，对你较友好`;
+          strength = 9;
+        } else if (masterPct >= 20) {
+          desc = `真实投稿中硕士占${masterPct}%，有一定空间`;
+          strength = 6;
+        } else if (phdPct >= 70 && !supervisorAvailable) {
+          desc = `投稿以博士为主(${phdPct}%)，硕士独作难度较大`;
+          strength = -2;
+        }
+      } else if (id === '博士生' || id === '博士') {
+        if (phdPct >= 40) {
+          desc = `真实投稿中博士占${phdPct}%，对你较友好`;
+          strength = 8;
+        } else if (phdPct >= 20) {
+          desc = `真实投稿中博士占${phdPct}%，有一定空间`;
+          strength = 5;
+        }
+      } else if (id === '本科生') {
+        if (masterPct >= 30) {
+          desc = `投稿者以硕博为主，本科建议有导师支持`;
+          strength = -2;
+        }
       }
-    } else if (id === '博士生' && (req.includes('博士') || req.includes('硕士'))) {
-      desc = '博士独作可投';
-    } else if (id === '硕士生' && supervisorAvailable && req.includes('博士')) {
-      desc = `硕士+导师挂名通讯，可挑战该刊${supervisorTail}`;
-    } else if (id === '硕士生' && req.includes('硕士')) {
-      desc = '硕士独作可投';
-    } else if (id === '本科生') {
-      if (req.includes('无硬性')) {
-        desc = '本科生可投';
-      } else if (supervisorAvailable && req.includes('硕士')) {
-        desc = `本科+导师挂名可尝试${supervisorTail}`;
+    }
+    // 回退到文本推断
+    if (!desc && journal.authorRequirement) {
+      const req = journal.authorRequirement;
+      if (req.includes('无硬性') || req.includes('无身份')) {
+        desc = '该刊无身份限制，适合所有作者';
+      } else if (id === '教授' || id === '副教授') {
+        desc = '资深作者身份，符合该刊偏好';
+      } else if (id === '博士生' && (req.includes('博士') || req.includes('硕士'))) {
+        desc = '博士独作可投';
+      } else if (id === '硕士生' && supervisorAvailable && req.includes('博士')) {
+        desc = '硕士+导师挂名通讯，可挑战该刊' + supervisorTail;
+      } else if (id === '硕士生' && req.includes('硕士')) {
+        desc = '硕士独作可投';
       }
-    } else if (id === '其他') {
-      desc = '请参考下方"作者画像"自行判断';
     }
 
     if (desc) {
@@ -2058,7 +2088,7 @@ function buildRecommendReasons(journal, item) {
         icon: '👥',
         label: '身份适配',
         value: desc,
-        strength: 6
+        strength: strength
       });
     }
   }
@@ -2344,11 +2374,11 @@ function buildJournalCard(item) {
       })()}</span>
     </div>
     <div class="jc-meta">
-      ${journal.reviewCycle ? `<span>📄 审稿 ${journal.reviewCycle}</span>` : ''}
+      ${(() => { const st = journal.wanweiReviewStats; if (st && st.reviewTimeAvg) { const d = st.reviewTimeAvg; return `<span>📄 审稿 ~${d >= 60 ? Math.round(d/30) + '个月' : d + '天'}</span>`; } return journal.reviewCycle ? `<span>📄 审稿 ${journal.reviewCycle}</span>` : ''; })()}
       ${journal.articlesPerIssue ? `<span>📖 约${journal.articlesPerIssue}篇/期</span>` : ''}
       ${journal.minPages ? `<span>📝 ${journal.minPages}版起发${journal.charsPerPage ? ' · ' + journal.charsPerPage : ''}</span>` : ''}
       <span>💰 ${journal.pageFee || '无版面费'}</span>
-      ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId ? `<a href="https://wanweixueshu.com/journal/detail/${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
+      ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId ? `<a href="https://www.eshukan.com/displayj.aspx?jid=${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
     </div>
     <div class="jc-keywords">${kwHtml}</div>
     ${reasonHtml}
@@ -2595,7 +2625,7 @@ function getDifficultyStyle(difficulty) {
   return { color: '#c62828', bg: '#ffebee', tag: '#ffb3ba', icon: '⚠' };
 }
 
-function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding) {
+function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding, journal) {
   const tips = {
     友好: {
       teacher: '该群体是该刊主力作者',
@@ -2649,13 +2679,24 @@ function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding)
       : '你已有基金项目，是论文亮点之一';
     return fundPrefix + '。' + baseTip;
   }
+
+  // 补充万维书刊网真实数据
+  if (journal) {
+    const ar = (journal.wanweiReviewStats && journal.wanweiReviewStats.acceptanceRate !== undefined)
+      ? journal.wanweiReviewStats.acceptanceRate : null;
+    if (ar !== null && journal.wanweiReviewStats.total >= 3) {
+      const arNote = ar >= 50 ? ` 万维书刊网点名录用率约${ar}%，录用可能性较高。`
+        : ar >= 20 ? ` 万维书刊网点名录用率约${ar}%。`
+        : ar < 5 ? ` 万维书刊网点名录用率极低（<5%），竞争激烈。`
+        : '';
+      return baseTip + arNote;
+    }
+  }
   return baseTip;
 }
 
 function getDifficultyForUser(journal, profile) {
   if (!profile || !profile.identity) return null;
-  const comp = inferAuthorComposition(journal);
-  if (!comp) return null;
 
   const id = profile.identity;
   const supervisor = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
@@ -2664,41 +2705,109 @@ function getDifficultyForUser(journal, profile) {
   const requiresFunding = !!journal.requiresFunding;
 
   let myShare = 0, label = '', difficulty = '';
+  let usedRealData = false;
 
-  if (id === '教授') {
-    myShare = comp.identity.professor; label = '教授'; difficulty = '友好';
-  } else if (id === '副教授' || id === '讲师') {
-    myShare = comp.identity.associate; label = id;
-    difficulty = myShare >= 30 ? '友好' : '可尝试';
-  } else if (id === '博士生' || id === '博士') {
-    myShare = comp.identity.phd; label = '博士';
-    if (myShare >= 25) difficulty = '友好';
-    else if (myShare >= 15) difficulty = '较大';
-    else difficulty = '极大';
-  } else if (id === '硕士生') {
-    myShare = comp.identity.master;
-    label = supervisor ? ('硕士+导师' + supervisorTail) : '硕士独作';
-    if (supervisor) {
-      if (myShare >= 20) difficulty = '可尝试';
-      else if (myShare >= 10) difficulty = '较大';
+  // 优先用 authorDistribution 真实分布
+  const ad = journal.authorDistribution;
+  if (ad && ad.degrees && ad.sampleSize >= 3) {
+    usedRealData = true;
+    const deg = ad.degrees;
+    const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
+    const phdCount = (deg['博士']||0) + (deg['在读博士']||0) + (deg['博士后']||0);
+    const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
+    const professorCount = (deg['教授']||0) + (deg['正高']||0) + (deg['副高']||0);
+    const phdPct = Math.round(phdCount / total * 100);
+    const masterPct = Math.round(masterCount / total * 100);
+
+    // Map user identity to real distribution
+    if (id === '教授' || id === '副教授') {
+      myShare = Math.round(professorCount / total * 100) || 5;
+      label = id;
+      difficulty = myShare >= 20 ? '友好' : '可尝试';
+    } else if (id === '讲师') {
+      myShare = Math.round(professorCount / total * 100 * 0.6) || 3;
+      // Also consider phd representation
+      if (phdPct >= 20) myShare = Math.max(myShare, Math.round(phdPct * 0.5));
+      label = '讲师';
+      difficulty = myShare >= 15 ? '可尝试' : myShare >= 8 ? '较大' : '极大';
+    } else if (id === '博士生' || id === '博士') {
+      myShare = phdPct || 3;
+      label = '博士';
+      if (phdPct >= 30) difficulty = '友好';
+      else if (phdPct >= 15) difficulty = '较大';
       else difficulty = '极大';
+    } else if (id === '硕士生') {
+      myShare = masterPct || 1;
+      label = supervisor ? ('硕士+导师' + supervisorTail) : '硕士独作';
+      if (supervisor) {
+        // With supervisor, effectively competing in phd pool
+        const effectiveShare = Math.max(masterPct, Math.round(phdPct * 0.5));
+        myShare = effectiveShare;
+        if (effectiveShare >= 20) difficulty = '可尝试';
+        else if (effectiveShare >= 10) difficulty = '较大';
+        else difficulty = '极大';
+      } else {
+        if (masterPct >= 30) difficulty = '可尝试';
+        else if (masterPct >= 15) difficulty = '较大';
+        else difficulty = '极大';
+      }
+    } else if (id === '本科生') {
+      myShare = Math.max(1, Math.round(masterPct * 0.2));
+      label = supervisor ? ('本科+导师' + supervisorTail) : '本科独作';
+      difficulty = masterPct >= 25 ? '可尝试' : '极大';
     } else {
-      if (myShare >= 25) difficulty = '可尝试';
-      else if (myShare >= 15) difficulty = '较大';
-      else difficulty = '极大';
+      myShare = 5; label = '其他作者'; difficulty = '可尝试';
     }
-  } else if (id === '本科生') {
-    label = supervisor ? ('本科+导师' + supervisorTail) : '本科独作';
-    const isOpen = comp.identity.master >= 35 && comp.identity.other >= 8;
-    if (supervisor) {
-      myShare = Math.max(2, Math.round(comp.identity.master / 3));
-      difficulty = comp.identity.master >= 25 ? '可尝试' : '极大';
-    } else {
-      myShare = isOpen ? Math.max(2, Math.round(comp.identity.other * 0.6)) : 1;
-      difficulty = isOpen ? '可尝试' : '极大';
+
+    // 万维书刊网录用率调整
+    const stats = journal.wanweiReviewStats;
+    if (stats && stats.acceptanceRate !== undefined && stats.total >= 3) {
+      const ar = stats.acceptanceRate;
+      const downgrade = { 极大: '较大', 较大: '可尝试', 可尝试: '友好' };
+      const upgrade = { 友好: '可尝试', 可尝试: '较大', 较大: '极大' };
+      if (ar >= 50 && downgrade[difficulty]) difficulty = downgrade[difficulty];
+      if (ar < 5 && upgrade[difficulty]) difficulty = upgrade[difficulty];
     }
   } else {
-    myShare = comp.identity.other; label = '其他作者'; difficulty = '可尝试';
+    // 回退到 inferAuthorComposition（无真实数据时）
+    const comp = inferAuthorComposition(journal);
+    if (!comp) return null;
+
+    if (id === '教授') {
+      myShare = comp.identity.professor; label = '教授'; difficulty = '友好';
+    } else if (id === '副教授' || id === '讲师') {
+      myShare = comp.identity.associate; label = id;
+      difficulty = myShare >= 30 ? '友好' : '可尝试';
+    } else if (id === '博士生' || id === '博士') {
+      myShare = comp.identity.phd; label = '博士';
+      if (myShare >= 25) difficulty = '友好';
+      else if (myShare >= 15) difficulty = '较大';
+      else difficulty = '极大';
+    } else if (id === '硕士生') {
+      myShare = comp.identity.master;
+      label = supervisor ? ('硕士+导师' + supervisorTail) : '硕士独作';
+      if (supervisor) {
+        if (myShare >= 20) difficulty = '可尝试';
+        else if (myShare >= 10) difficulty = '较大';
+        else difficulty = '极大';
+      } else {
+        if (myShare >= 25) difficulty = '可尝试';
+        else if (myShare >= 15) difficulty = '较大';
+        else difficulty = '极大';
+      }
+    } else if (id === '本科生') {
+      label = supervisor ? ('本科+导师' + supervisorTail) : '本科独作';
+      const isOpen = comp.identity.master >= 35 && comp.identity.other >= 8;
+      if (supervisor) {
+        myShare = Math.max(2, Math.round(comp.identity.master / 3));
+        difficulty = comp.identity.master >= 25 ? '可尝试' : '极大';
+      } else {
+        myShare = isOpen ? Math.max(2, Math.round(comp.identity.other * 0.6)) : 1;
+        difficulty = isOpen ? '可尝试' : '极大';
+      }
+    } else {
+      myShare = comp.identity.other; label = '其他作者'; difficulty = '可尝试';
+    }
   }
 
   if (hasFunding) {
@@ -2706,7 +2815,7 @@ function getDifficultyForUser(journal, profile) {
     if (downgrade[difficulty]) difficulty = downgrade[difficulty];
   }
 
-  const advice = generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding);
+  const advice = generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding, usedRealData ? journal : null);
   return { myShare, label, difficulty, advice, hasFunding, requiresFunding };
 }
 
