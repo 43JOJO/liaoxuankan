@@ -50,6 +50,7 @@ rescrape-unmatched-eshukan.js
 rescrape-skipped-eshukan.js
 enrich-journal-data.js
 fix-reviews-data.js
+fix-dirty-now.js
 
 # === 临时文件 ===
 *.tmp
