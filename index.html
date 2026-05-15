@@ -1990,35 +1990,44 @@ function buildRecommendReasons(journal, item) {
     }
   }
 
-  // 维度 3：收稿倾向（解析 preferredTopics）
+  // 维度 3：收稿倾向（解析 preferredTopics + 网友投稿主题）
   if (journal.preferredTopics) {
     const pt = journal.preferredTopics;
     const sentences = pt.split(/[，。；]/).map(s => s.trim()).filter(Boolean);
 
-    // 黑名单：含这些词的句子是元数据/定位描述，不算偏好
+    // 优先提取网友投稿主题（真实数据）
+    const rtMatch = pt.match(/【网友投稿主题[：:]\s*([^】]+)】/);
+    if (rtMatch) {
+      const reviewTopics = rtMatch[1].split(/[、，,]/).map(t => t.replace(/\(\d+次\)/, '').trim()).filter(t => t.length >= 2 && t.length <= 15);
+      if (reviewTopics.length >= 2) {
+        reasons.push({
+          icon: '📊',
+          label: '网友投稿主题',
+          value: reviewTopics.join(' · '),
+          strength: 12
+        });
+      }
+    }
+
+    // 再找人工整理的偏好描述
     const isMetaSentence = (s) =>
       /主办|主管|创办|出版社|发行|学报名|集刊形式|核心刊|C刊唯一|入库|扩展刊|月刊|双月刊|季刊|半月刊|周刊|旬刊|发文量大|审稿快|审稿慢|^[A-Z]/.test(s);
-
-    // 强信号：含明确的偏好动词
     const hasStrongVerb = (s) =>
       /偏好|倾向|欢迎|讲究|重视|青睐|偏向|排斥|不收|慎收|偏[A-Za-z一-龥]/.test(s);
-
-    // 弱信号：含适配/友好类描述
     const hasWeakSignal = (s) =>
       /对.{0,18}友好|对.{0,18}接受度高|对.{0,18}对口|适合|擅长|侧重|关注|强调|更喜欢/.test(s);
 
-    // 优先找强信号，再找弱信号；都没有则不显示这一项
     let mainPoint = sentences.find(s => !isMetaSentence(s) && hasStrongVerb(s));
     if (!mainPoint) {
       mainPoint = sentences.find(s => !isMetaSentence(s) && hasWeakSignal(s));
     }
 
-    if (mainPoint && mainPoint.length >= 6 && mainPoint.length <= 40) {
+    if (mainPoint && mainPoint.length >= 6 && mainPoint.length <= 60) {
       reasons.push({
         icon: '✨',
         label: '收稿倾向',
         value: mainPoint,
-        strength: 10
+        strength: mainPoint.includes('网友投稿') ? 0 : 10
       });
     }
   }
@@ -2176,6 +2185,21 @@ function scoreXuebao(x, profile) {
   if (profile.unit === '985' && (x.level === 'AMI顶级' || x.level === 'AMI权威')) score += 5;
   if (profile.unit === 'normal' && (x.level === 'AMI入库' || x.level === 'AMI扩展')) score += 8;
   if (profile.unit === 'vocational' && x.level === 'AMI入库') score += 10;
+
+  // 5. 投稿方向匹配（基于用户论文 + 学科方向）
+  const paperText = (window.currentPaperText || '').toLowerCase();
+  const discipline = currentDiscipline || '';
+  if (paperText || discipline) {
+    let domainHits = 0;
+    const domains = x.domains || [];
+    if (domains.length > 0) {
+      for (const d of domains) {
+        if (paperText.includes(d.toLowerCase()) || discipline.includes(d)) domainHits++;
+      }
+      const domainBoost = Math.round(Math.min(20, domainHits / Math.max(1, domains.length) * 20));
+      score += domainBoost;
+    }
+  }
 
   return { score, tags };
 }
