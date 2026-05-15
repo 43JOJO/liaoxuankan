@@ -2712,15 +2712,23 @@ function buildWanweiPanel(journal) {
   html += '<div style="background:#fdf8f0;border:1px solid #f0e4ce;border-radius:8px;padding:12px 14px;margin:10px 0;">';
   html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
   html += '<span style="font-weight:600;color:#8b6914;font-size:0.82rem;">💬 万维书刊网点评</span>';
-  html += '<a href="https://wanweixueshu.com/journal/detail/' + journal.wanweiId + '" target="_blank" rel="noopener" style="font-size:0.75rem;color:#b8860b;text-decoration:none;font-weight:500;">→ 在万维书刊网查看完整点评</a>';
+  html += '<a href="https://www.eshukan.com/displayj.aspx?jid=' + journal.wanweiId + '" target="_blank" rel="noopener" style="font-size:0.75rem;color:#b8860b;text-decoration:none;font-weight:500;">→ 在万维书刊网查看完整点评</a>';
   html += '</div>';
 
   if (hasStats) {
     var s = journal.wanweiReviewStats;
     html += '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.8rem;margin-bottom:10px;">';
     html += '<span style="color:#666;">共 <strong>' + (s.total || reviews.length) + '</strong> 条点评</span>';
-    if (s.reviewTimeAvg) html += '<span style="color:#666;">平均审稿 <strong>' + s.reviewTimeAvg + '个月</strong></span>';
-    if (s.reviewTimeMin && s.reviewTimeMax) html += '<span style="color:#666;">范围 ' + s.reviewTimeMin + '-' + s.reviewTimeMax + '个月</span>';
+    if (s.reviewTimeAvg) {
+      var avgDays = s.reviewTimeAvg;
+      var avgDisplay = avgDays >= 60 ? Math.round(avgDays/30) + '个月' : avgDays + '天';
+      html += '<span style=\"color:#666;\">平均审稿 <strong>' + avgDisplay + '</strong></span>';
+    }
+    if (s.reviewTimeMin && s.reviewTimeMax) {
+      var minDisplay = s.reviewTimeMin >= 60 ? Math.round(s.reviewTimeMin/30) + '个月' : s.reviewTimeMin + '天';
+      var maxDisplay = s.reviewTimeMax >= 60 ? Math.round(s.reviewTimeMax/30) + '个月' : s.reviewTimeMax + '天';
+      html += '<span style=\"color:#666;\">范围 ' + minDisplay + '-' + maxDisplay + '</span>';
+    }
     if (s.acceptanceRate !== undefined) {
       var rateColor = s.acceptanceRate >= 50 ? '#2e7d32' : s.acceptanceRate >= 25 ? '#e67e22' : '#c62828';
       html += '<span style="color:' + rateColor + ';font-weight:600;">录用率约' + s.acceptanceRate + '%</span>';
@@ -2755,7 +2763,7 @@ function buildWanweiPanel(journal) {
       html += '</div>';
     });
     if (reviews.length > 3) {
-      html += '<div style="text-align:center;font-size:0.72rem;color:#999;">... 还有 ' + (reviews.length - 3) + ' 条点评，<a href="https://wanweixueshu.com/journal/detail/' + journal.wanweiId + '" target="_blank" rel="noopener" style="color:#b8860b;">前往万维查看全部</a></div>';
+      html += '<div style="text-align:center;font-size:0.72rem;color:#999;">... 还有 ' + (reviews.length - 3) + ' 条点评，<a href="https://www.eshukan.com/jdianping.aspx?jid=' + journal.wanweiId + '" target="_blank" rel="noopener" style="color:#b8860b;">前往万维书刊网查看全部</a></div>';
     }
     html += '</div>';
   }
