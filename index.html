@@ -1377,13 +1377,37 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     else if (journal.unitPreference.includes('211') && (currentUnit === '985' || currentUnit === '211')) unitBoost = 5;
     else if (journal.unitPreference.includes('优先') && currentUnit === '985') unitBoost = 3;
   }
-  // 反向：普通高校/高职投普刊有优势
-  if (currentUnit && (currentUnit === 'normal' || currentUnit === 'vocational')) {
-    const cl = journal.catalogLevel || '';
-    if (cl === '普通期刊' || cl.includes('AMI入库') || cl.includes('AMI职院刊')) unitBoost += 5;
-  }
   // 独立学者投开放期刊
   if (currentUnit === 'independent' && (journal.authorRequirement || '').includes('无硬性')) unitBoost += 5;
+
+  // 高校层次-期刊层级匹配：以期刊级别为代理
+  // 学术圈规律：CSSCI→985/211为主；AMI入库→普通高校友好
+  if (currentUnit) {
+    const cl = journal.catalogLevel || '';
+    const isTop = cl === 'CSSCI来源刊' || cl === 'SSCI' || cl === 'A&HCI';
+    const isHigh = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI顶级' || cl === 'AMI权威';
+    const isMid = cl === 'AMI核心';
+    const isLow = cl === 'AMI扩展' || cl === 'AMI入库';
+    const isEntry = cl === '普通期刊' || cl.includes('AMI职院刊') || cl.includes('AMI入库');
+
+    if (currentUnit === '985') {
+      if (isTop) unitBoost += 6;        // 985+顶级刊：最佳匹配
+      else if (isHigh) unitBoost += 3;  // 985+高级刊：正常
+    } else if (currentUnit === '211') {
+      if (isTop) unitBoost += 3;        // 211+顶级刊：可尝试
+      else if (isHigh) unitBoost += 4;  // 211+高级刊：较匹配
+    } else if (currentUnit === 'normal') {
+      if (isTop) unitBoost -= 12;       // 普通高校+CSSCI：极难
+      else if (isHigh) unitBoost -= 6;  // 普通高校+北大核心/AMI权威：偏难
+      else if (isMid) unitBoost += 2;   // 普通高校+AMI核心：适中
+      else if (isLow || isEntry) unitBoost += 8; // 普通高校+AMI入库/普刊：友好
+    } else if (currentUnit === 'vocational') {
+      if (isTop || isHigh) unitBoost -= 15; // 高职+高级刊：基本不现实
+      else if (isMid) unitBoost -= 5;
+      else if (cl.includes('AMI职院刊')) unitBoost += 10; // 高职+职院刊：完美
+      else if (isEntry) unitBoost += 6;
+    }
+  }
 
   // 身份-作者画像匹配：你是谁 vs 该刊实际发文者构成
   let identityBoost = 0;
