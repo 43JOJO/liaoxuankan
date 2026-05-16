@@ -1600,6 +1600,22 @@ function checkConstraints(journal, profile) {
   const warnings = [];
   let blocked = false;
 
+  // 硬性拦截：硕士独作/本科 → CSSCI扩展版及以上一律不推荐
+  const isSoloMaster = profile.identity === '硕士生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  const isSoloBachelor = profile.identity === '本科生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  const cl = journal.catalogLevel || '';
+  const isHighLevel = cl.includes('CSSCI') || cl === 'SSCI' || cl === 'A&HCI' || cl === '北大核心' || cl === 'AMI顶级' || cl === 'AMI权威';
+  const isMidLevel = cl === 'AMI核心';
+
+  if (isSoloMaster && isHighLevel) {
+    blocked = true;
+    warnings.push('硕士独作极难被' + cl + '录用，建议有导师挂名通讯后再考虑此类期刊');
+  }
+  if (isSoloBachelor && (isHighLevel || isMidLevel)) {
+    blocked = true;
+    warnings.push('本科独作基本不可能被' + cl + '录用，建议从AMI入库/普通期刊起步');
+  }
+
   // 作者身份限制（导师支持可放宽一档；maybe 升档但加提示）
   let effectiveIdentity = profile.identity;
   const supervisorAvailable = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
