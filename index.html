@@ -1227,13 +1227,18 @@ function computeDomainMatch(paperText, journal, discipline) {
   return Math.min(1, hits / Math.max(1, journal.domains.length + 2));
 }
 
-// 改进的匹配分数计算（用户关键词加权 + 专业方向加成）
+// 改进的匹配分数计算
 function computeMatchScore(paperText, paperKeywords, journal, discipline) {
-  // 关键词加权：用户明确提供的关键词权重更高
   const kwText = paperKeywords || '';
   const mainText = paperText || '';
-  // 同义词扩展：主要针对论文正文，关键词本身已精准
-  const expandedText = (mainText + ' ' + expandWithSynonyms(mainText + ' ' + kwText)).toLowerCase();
+
+  // 标题权重 > 摘要权重：标题词权重2x（标题定义核心主题）
+  const titleText = ($('paper-title')?.value || '').toLowerCase();
+  const abstractText = mainText.replace(titleText, '').toLowerCase();
+
+  // 语义扩展（两轮）
+  const expandedRaw = (mainText + ' ' + kwText).toLowerCase();
+  const expandedText = (expandedRaw + ' ' + expandWithSynonyms(expandedRaw)).toLowerCase();
   const allText = (mainText + ' ' + kwText).toLowerCase();
   const tokens = new Set(tokenize(expandedText));
 
@@ -1244,8 +1249,8 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
 
   for (const kw of journal.keywords) {
     const kwLower = kw.toLowerCase();
-    // 权重：较长关键词权重更高（通常是学术专有名词）
-    const weight = kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1;
+    // 基础权重：按长度
+    let weight = kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1;
 
     let matched = false;
 
@@ -1253,12 +1258,11 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     if (expandedText.includes(kwLower)) {
       matched = true;
     }
-    // 子串滑动窗口匹配：从关键词生成2-4字子串，在扩展文本中查找
+    // 子串滑动窗口匹配
     if (!matched && kwLower.length >= 3) {
       for (let len = 2; len <= Math.min(4, kwLower.length); len++) {
         for (let i = 0; i <= kwLower.length - len; i++) {
-          const sub = kwLower.substring(i, i + len);
-          if (expandedText.includes(sub)) { matched = true; break; }
+          if (expandedText.includes(kwLower.substring(i, i + len))) { matched = true; break; }
         }
         if (matched) break;
       }
@@ -1266,42 +1270,83 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     // Token 级别匹配
     if (!matched) {
       for (const t of tokens) {
-        if (t.includes(kwLower) || kwLower.includes(t)) {
-          matched = true;
-          break;
-        }
+        if (t.includes(kwLower) || kwLower.includes(t)) { matched = true; break; }
       }
     }
-    // 在原文中直接搜索（不分词）
-    if (!matched && allText.includes(kwLower)) {
-      matched = true;
-    }
+    // 原文直搜
+    if (!matched && allText.includes(kwLower)) { matched = true; }
 
     if (matched) {
-      // 关键词加权：命中用户明确提供的关键词 → 3倍权重
-      let effectiveWeight = weight;
+      // 用户关键词直接命中 → 3倍
       if (kwText && kwText.toLowerCase().includes(kwLower)) {
-        effectiveWeight = weight * 3;
-      } else if (kwText && kwLower.length >= 2) {
-        // 模糊匹配用户关键词：2倍
-        const kwTokens = tokenize(kwText.toLowerCase());
-        for (const kt of kwTokens) {
-          if (kt.includes(kwLower) || kwLower.includes(kt)) {
-            effectiveWeight = weight * 2;
-            break;
+        weight *= 3;
+      }
+      // 标题命中 → 2倍（标题定义核心主题）
+      else if (titleText && (titleText.includes(kwLower) || kwLower.includes(titleText.substring(0, Math.min(20, titleText.length))))) {
+        weight *= 2;
+        // 检查子串匹配
+        if (weight === kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1) {
+          for (let len = 2; len <= Math.min(4, kwLower.length); len++) {
+            for (let i = 0; i <= kwLower.length - len; i++) {
+              if (titleText.includes(kwLower.substring(i, i + len))) { weight = (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1) * 2; break; }
+            }
+            if (weight > (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1)) break;
           }
         }
       }
-      matchCount += effectiveWeight;
+      // 模糊匹配用户关键词 → 2倍
+      else if (kwText && kwLower.length >= 2) {
+        const kwTokens = tokenize(kwText.toLowerCase());
+        for (const kt of kwTokens) {
+          if (kt.includes(kwLower) || kwLower.includes(kt)) { weight *= 2; break; }
+        }
+      }
+
+      matchCount += weight;
       matchedKeywords.push(kw);
     } else {
       unmatchedKeywords.push(kw);
     }
-    totalWeight += weight;
+    totalWeight += (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1); // use base weight for total
   }
 
-  // 领域匹配加成（最多 +20%，含专业方向加成）
-  let domainBoost = computeDomainMatch(paperText, journal, discipline) * 20;
+  // 用户关键词 → 期刊关键词反向匹配：用户的每个关键词也在期刊关键词中搜索
+  let userKwBoost = 0;
+  if (kwText) {
+    const userTokens = tokenize(kwText.toLowerCase());
+    for (const ut of userTokens) {
+      if (ut.length < 2) continue;
+      for (const jk of journal.keywords) {
+        const jkl = jk.toLowerCase();
+        if (jkl.includes(ut) || ut.includes(jkl)) { userKwBoost += 1.5; break; }
+      }
+    }
+    userKwBoost = Math.round(Math.min(12, userKwBoost));
+  }
+
+  // 栏目匹配加成（真实栏目数据 → 评分）
+  let columnBoost = 0;
+  const columns = journal.columns || [];
+  if (columns.length > 0) {
+    let colHits = 0;
+    for (const col of columns) {
+      const colLower = col.toLowerCase();
+      if (expandedText.includes(colLower)) { colHits++; }
+      else {
+        for (let len = 2; len <= Math.min(4, colLower.length); len++) {
+          let found = false;
+          for (let i = 0; i <= colLower.length - len; i++) {
+            if (expandedText.includes(colLower.substring(i, i + len))) { colHits += 0.5; found = true; break; }
+          }
+          if (found) break;
+        }
+      }
+    }
+    columnBoost = Math.round(Math.min(15, colHits / Math.max(1, columns.length) * 15));
+  }
+
+  // 领域匹配加成（使用扩展文本！）
+  let domainBoost = computeDomainMatch(expandedText, journal, discipline) * 20;
 
   // 万维书刊网 review topics 加成（最多 +15%）
   let reviewTopicBoost = 0;
@@ -1377,11 +1422,15 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   const dampedWeight = Math.sqrt(totalWeight);
   const ratio = dampedWeight > 0 ? matchCount / dampedWeight : 0;
   return {
-    score: Math.min(100, Math.round(Math.min(1, ratio) * 80 + domainBoost + unitBoost)),
+    score: Math.min(100, Math.round(
+      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost
+    )),
     matchedKeywords,
     unmatchedKeywords,
     ratio,
-    domainBoost: Math.round(domainBoost)
+    domainBoost: Math.round(domainBoost),
+    columnBoost,
+    userKwBoost
   };
 }
 
