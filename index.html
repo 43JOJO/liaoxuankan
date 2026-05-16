@@ -3164,10 +3164,10 @@ function buildUserMatchInsight(journal, profile) {
 }
 
 function buildColumnMatch(journal, item) {
-  // 优先使用期刊自带的 columns 字段，否则用 domains 推断
+  // 优先使用真实栏目（万维书刊网提取），否则从 domains 推断
   let columns = journal.columns || [];
+  let sourceLabel = '';
   if (columns.length === 0) {
-    // 从 domains 和 preferredTopics 推断栏目
     const inferred = new Set();
     for (const d of journal.domains) {
       if (d.includes('美术')) { inferred.add('美术研究'); inferred.add('美术评论'); }
@@ -3186,41 +3186,55 @@ function buildColumnMatch(journal, item) {
       if (d.includes('影视') || d.includes('电影')) { inferred.add('影视研究'); inferred.add('影像艺术'); }
     }
     columns = [...inferred].slice(0, 8);
+    sourceLabel = '（基于领域推测）';
   }
 
   if (columns.length === 0) return '';
 
-  // 匹配：论文标题+摘要+关键词 vs 栏目名
+  // 匹配：论文 vs 栏目名（改进的 token 级别匹配）
   const paperText = ($('paper-title').value + ' ' + $('paper-abstract').value + ' ' + $('paper-keywords').value).toLowerCase();
+  const paperTokens = tokenize(paperText);
   const matched = [];
   const other = [];
+
   for (const col of columns) {
     const colLower = col.toLowerCase();
-    // 检查栏目名中的关键词是否出现在论文文本中
     let hit = false;
-    for (const char of col) {
-      if (char.length >= 2 && paperText.includes(char)) { hit = true; break; }
-    }
-    if (!hit && paperText.includes(colLower)) hit = true;
-    // 也尝试反向匹配
+
+    // 1. 整词匹配
+    if (paperText.includes(colLower)) { hit = true; }
+    // 2. 拆分栏目名为字词（如"非遗研究"拆为["非遗","研究"]），检查是否有至少2个字的词命中
     if (!hit) {
-      for (const kw of (journal.keywords || [])) {
-        if (colLower.includes(kw.toLowerCase()) || kw.toLowerCase().includes(colLower)) {
-          hit = true; break;
+      const colParts = [];
+      for (let i = 0; i < col.length; i++) {
+        for (let j = i + 2; j <= col.length; j++) {
+          colParts.push(col.substring(i, j));
         }
       }
+      for (const part of colParts) {
+        if (part.length >= 2 && paperText.includes(part)) { hit = true; break; }
+      }
     }
+    // 3. Token 反向匹配
+    if (!hit) {
+      for (const tok of paperTokens) {
+        if (tok.length >= 2 && colLower.includes(tok)) { hit = true; break; }
+      }
+    }
+
     if (hit) matched.push(col); else other.push(col);
   }
 
   if (matched.length === 0 && other.length === 0) return '';
 
-  let html = '<div class="notes-box" style="background:#f3e5f5;border-color:#ce93d8;color:#6a1b9a;margin-top:8px;"><strong>适配栏目建议：</strong>';
+  let html = '<div class="notes-box" style="background:#f3e5f5;border-color:#ce93d8;color:#6a1b9a;margin-top:8px;"><strong>📋 栏目匹配' + sourceLabel + '：</strong>';
   if (matched.length > 0) {
-    html += matched.map(c => `<span style="background:#e1bee7;padding:1px 8px;border-radius:10px;margin:2px;display:inline-block;font-size:0.8rem;">✓ ${c}</span>`).join(' ');
+    html += matched.map(c => '<span style="background:#ce93d8;color:#fff;padding:2px 9px;border-radius:10px;margin:2px;display:inline-block;font-size:0.8rem;">✓ ' + c + '</span>').join(' ');
   }
-  if (other.length > 0 && other.length <= 5) {
-    html += ' ' + other.map(c => `<span style="background:#f3e5f5;padding:1px 8px;border-radius:10px;margin:2px;display:inline-block;font-size:0.8rem;color:#999;">${c}</span>`).join(' ');
+  if (other.length > 0 && other.length <= 6) {
+    html += ' ' + other.map(c => '<span style="background:#f3e5f5;padding:2px 9px;border-radius:10px;margin:2px;display:inline-block;font-size:0.8rem;color:#999;">' + c + '</span>').join(' ');
+  } else if (other.length > 6) {
+    html += ' <span style="color:#999;font-size:0.78rem;">等共' + columns.length + '个栏目</span>';
   }
   html += '</div>';
   return html;
