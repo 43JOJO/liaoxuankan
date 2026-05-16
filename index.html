@@ -3392,22 +3392,22 @@ function buildColumnMatch(journal, item) {
 
     // 1. 整词匹配
     if (paperText.includes(colLower)) { hit = true; }
-    // 2. 拆分栏目名为字词（如"非遗研究"拆为["非遗","研究"]），检查是否有至少2个字的词命中
+    // 2. 拆分栏目名为字词片段，至少3字命中才算（避免"美术"这种2字泛词误匹配）
     if (!hit) {
       const colParts = [];
       for (let i = 0; i < col.length; i++) {
-        for (let j = i + 2; j <= col.length; j++) {
+        for (let j = i + 3; j <= col.length; j++) {
           colParts.push(col.substring(i, j));
         }
       }
       for (const part of colParts) {
-        if (part.length >= 2 && paperText.includes(part)) { hit = true; break; }
+        if (part.length >= 3 && paperText.includes(part)) { hit = true; break; }
       }
     }
-    // 3. Token 反向匹配
+    // 3. Token 反向匹配：论文token至少3字且被栏目名包含
     if (!hit) {
       for (const tok of paperTokens) {
-        if (tok.length >= 2 && colLower.includes(tok)) { hit = true; break; }
+        if (tok.length >= 3 && colLower.includes(tok)) { hit = true; break; }
       }
     }
 
