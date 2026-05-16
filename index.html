@@ -1410,9 +1410,9 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   }
 
   // 身份-作者画像匹配：你是谁 vs 该刊实际发文者构成
+  const profile = window.currentProfile || {};
   let identityBoost = 0;
   const ad = journal.authorDistribution;
-  const profile = window.currentProfile || {};
   if (ad && ad.degrees && ad.sampleSize >= 3 && profile.identity) {
     const deg = ad.degrees;
     const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
