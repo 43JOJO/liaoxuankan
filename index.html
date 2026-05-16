@@ -2329,8 +2329,14 @@ function scoreXuebao(x, profile) {
     let domainHits = 0;
     const domains = x.domains || [];
     if (domains.length > 0) {
-      for (const d of domains) {
-        if (paperText.includes(d.toLowerCase()) || discipline.includes(d)) domainHits++;
+      // 综合社科学报：什么方向都收，给基础分而非零分
+      const isGeneralist = domains.length === 1 && domains[0] === '综合社科';
+      if (isGeneralist) {
+        domainHits = 0.5; // 50% base match for generalist journals
+      } else {
+        for (const d of domains) {
+          if (paperText.includes(d.toLowerCase()) || discipline.includes(d)) domainHits++;
+        }
       }
       const domainBoost = Math.round(Math.min(20, domainHits / Math.max(1, domains.length) * 20));
       score += domainBoost;
