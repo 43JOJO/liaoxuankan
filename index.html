@@ -1409,6 +1409,48 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     }
   }
 
+  // 地理冲突：论文地域 vs 期刊地域指向是否矛盾
+  let geoPenalty = 0;
+  const geoRegions = {
+    '西藏': ['藏族','藏区','青藏','拉萨','喜马拉雅','唐卡','藏传','雪域','藏戏','格萨尔'],
+    '新疆': ['维吾尔','哈萨克','天山','西域','南疆','北疆','喀什','乌鲁木齐','龟兹'],
+    '内蒙古': ['蒙古族','草原','蒙元','阴山','呼伦贝尔','科尔沁','敕勒'],
+    '云南': ['傣族','白族','彝族','哈尼族','纳西','大理','丽江','西双版纳','滇','东巴'],
+    '贵州': ['苗族','侗族','布依族','黔','苗寨','蜡染','屯堡'],
+    '广西': ['壮族','瑶族','桂','北部湾','漓江','刘三姐'],
+    '山东': ['齐鲁','济南','青岛','胶东','泰山','曲阜','孔孟','水浒','淄博'],
+    '东北': ['黑龙江','吉林','辽宁','满族','朝鲜族','长白山','松花江','二人转'],
+    '江南': ['苏州','杭州','扬州','南京','吴越','徽州','皖南','太湖','秦淮','金陵'],
+    '西北': ['敦煌','河西','关中','陕北','陇','兵马俑','西夏'],
+    '闽台': ['福建','台湾','闽南','客家','泉州','厦门','漳州','莆田','闽'],
+    '巴蜀': ['四川','重庆','蜀','巴渝','成都','川西','羌族','凉山','三星堆'],
+    '岭南': ['广东','海南','粤','潮汕','珠三角','广府','雷州'],
+    '湖湘': ['湖南','湖北','荆楚','湘西','楚文化','武陵'],
+    '中原': ['河南','郑州','洛阳','开封','中原','河洛'],
+  };
+  const paperLower = (mainText + ' ' + kwText).toLowerCase();
+  const journalLower = ((journal.name||'') + ' ' + (journal.keywords||[]).join(' ') + ' ' + (journal.domains||[]).join(' ') + ' ' + (journal.columns||[]).join(' ')).toLowerCase();
+  // 找论文的地域信号
+  let paperRegion = null;
+  for (const [region, terms] of Object.entries(geoRegions)) {
+    for (const t of terms) {
+      if (paperLower.includes(t.toLowerCase())) { paperRegion = region; break; }
+    }
+    if (paperRegion) break;
+  }
+  // 找期刊的地域信号
+  let journalRegion = null;
+  for (const [region, terms] of Object.entries(geoRegions)) {
+    for (const t of terms) {
+      if (journalLower.includes(t.toLowerCase())) { journalRegion = region; break; }
+    }
+    if (journalRegion) break;
+  }
+  // 冲突：论文和期刊都有地域信号且不同 → 扣分
+  if (paperRegion && journalRegion && paperRegion !== journalRegion) {
+    geoPenalty = -20;
+  }
+
   // 透明度惩罚：点评极少或无点评的期刊，内部稿嫌疑大
   let transparencyPenalty = 0;
   const reviewCount = (journal.wanweiReviews || []).length;
@@ -1501,7 +1543,7 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   const ratio = dampedWeight > 0 ? matchCount / dampedWeight : 0;
   return {
     score: Math.min(100, Math.round(
-      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost + identityBoost + transparencyPenalty
+      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost + identityBoost + transparencyPenalty + geoPenalty
     )),
     matchedKeywords,
     unmatchedKeywords,
@@ -2535,7 +2577,22 @@ function scoreXuebao(x, profile) {
     }
   }
 
-  // 6. 学科适配：人文社科方向搜索时，排除/降权自然科学学报
+  // 6. 地理冲突：论文地域 vs 学报地域指向
+  const paperLower2 = (rawPaperText || '').toLowerCase();
+  const xbLower = ((x.name||'') + ' ' + (x.publisher||'')).toLowerCase();
+  const geoSignals = ['西藏','新疆','内蒙古','云南','贵州','广西','山东','东北','江南','西北','闽台','巴蜀','岭南','湖湘','中原',
+    '藏族','维吾尔','蒙古族','苗族','壮族','齐鲁','济南','青岛','敦煌','大理','丽江','拉萨','乌鲁木齐','成都','重庆'];
+  let paperGeo2 = '', journalGeo2 = '';
+  for (const g of geoSignals) {
+    if (paperGeo2 && journalGeo2) break;
+    if (!paperGeo2 && paperLower2.includes(g.toLowerCase())) paperGeo2 = g;
+    if (!journalGeo2 && xbLower.includes(g.toLowerCase())) journalGeo2 = g;
+  }
+  if (paperGeo2 && journalGeo2 && paperGeo2 !== journalGeo2) {
+    score -= 30; // 学报地域冲突惩罚更重
+  }
+
+  // 7. 学科适配：人文社科方向搜索时，排除/降权自然科学学报
   const name = x.name || '';
   const isHumanitiesSearch = /美术|艺术|设计|非遗|民俗|文学|历史|哲学|文化|教育|音乐|舞蹈|戏剧|影视|书法|工艺/.test(paperText) ||
                              /美术|艺术|设计|非遗|民俗|文学|历史|哲学/.test(discipline);
