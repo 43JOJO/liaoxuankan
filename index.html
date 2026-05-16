@@ -1425,12 +1425,14 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
 
     const id = profile.identity;
     if (id === '硕士生') {
-      if (masterPct >= 40) identityBoost = 10;
-      else if (masterPct >= 20) identityBoost = 5;
-      else if (masterPct >= 10) identityBoost = 0;
-      else if (phdPct >= 70) identityBoost = -15;
-      else if (phdPct >= 50) identityBoost = -8;
-      else identityBoost = -3;
+      // 硕士匹配：不仅要看硕士占比，还要看博士占比是否过高（过高说明硕士基本靠关系）
+      if (phdPct >= 70 && masterPct < 25) identityBoost = -18;  // 博士垄断，硕士基本没机会
+      else if (phdPct >= 60 && masterPct < 25) identityBoost = -12;
+      else if (masterPct >= 40) identityBoost = 10;              // 真正硕士友好
+      else if (masterPct >= 25) identityBoost = 3;               // 有一定空间
+      else if (masterPct >= 15) identityBoost = -3;              // 少数硕士，疑似关系户
+      else if (phdPct >= 50) identityBoost = -10;
+      else identityBoost = -5;
     } else if (id === '博士生' || id === '博士') {
       if (phdPct >= 40) identityBoost = 8;
       else if (phdPct >= 20) identityBoost = 4;
@@ -1438,11 +1440,13 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
       else if (profPct >= 60) identityBoost = -8;
       else identityBoost = -3;
     } else if (id === '本科生') {
-      if (masterPct >= 30) identityBoost = 5;
-      else if (masterPct >= 15) identityBoost = 0;
-      else identityBoost = -10;
+      if (masterPct >= 35) identityBoost = 5;
+      else if (masterPct >= 20) identityBoost = 0;
+      else if (phdPct >= 50) identityBoost = -15;
+      else identityBoost = -8;
     } else if (id === '讲师') {
       if (phdPct >= 20 || masterPct >= 30) identityBoost = 3;
+      else if (phdPct >= 50) identityBoost = -5;
     }
   }
 
@@ -1797,14 +1801,19 @@ function checkConstraints(journal, profile) {
     const masterPct = total > 0 ? masterCount / total * 100 : 0;
     const phdPct = total > 0 ? phdCount / total * 100 : 0;
 
-    if (profile.identity === '本科生' && masterPct < 5 && phdPct > 60 && !supervisorAvailable) {
+    // 硕士独作 + 博士垄断 → 基本等于关系户才能发
+    if (profile.identity === '硕士生' && phdPct >= 70 && masterPct < 25 && !supervisorAvailable) {
       blocked = true;
-      warnings.push('该刊实际投稿者中博士占' + Math.round(phdPct) + '%，本科生极少。建议有导师支持后再试');
+      warnings.push('该刊实际投稿者博士占' + Math.round(phdPct) + '%，硕士仅' + Math.round(masterPct) + '%（多为关系稿），硕士独作不建议尝试');
     } else if (profile.identity === '硕士生' && masterPct < 10 && phdPct > 75 && !supervisorAvailable) {
       blocked = true;
       warnings.push('该刊实际投稿者以博士为主(' + Math.round(phdPct) + '%)，硕士独作极难。建议有导师通讯支持后再投');
     } else if (profile.identity === '硕士生' && masterPct < 20 && phdPct > 60 && !supervisorAvailable) {
-      warnings.push('该刊硕士独作比例较低(约' + Math.round(masterPct) + '%)，竞争较大，建议有导师支持');
+      warnings.push('该刊硕士比例较低(约' + Math.round(masterPct) + '%)且博士占' + Math.round(phdPct) + '%，硕士独作难度很大，建议有导师支持');
+    }
+    if (profile.identity === '本科生' && masterPct < 5 && phdPct > 60 && !supervisorAvailable) {
+      blocked = true;
+      warnings.push('该刊实际投稿者中博士占' + Math.round(phdPct) + '%，本科生极少。建议有导师支持后再试');
     }
   } else if (journal.realAuthorProfile && profile.identity) {
     // 回退：文本推断（无 authorDistribution 数据时）
