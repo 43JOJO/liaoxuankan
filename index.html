@@ -1385,8 +1385,44 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   // 独立学者投开放期刊
   if (currentUnit === 'independent' && (journal.authorRequirement || '').includes('无硬性')) unitBoost += 5;
 
-  // 知网独作率匹配加成（基于用户身份与期刊独作率）
+  // 身份-作者画像匹配：你是谁 vs 该刊实际发文者构成
+  let identityBoost = 0;
+  const ad = journal.authorDistribution;
   const profile = window.currentProfile || {};
+  if (ad && ad.degrees && ad.sampleSize >= 3 && profile.identity) {
+    const deg = ad.degrees;
+    const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
+    const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
+    const phdCount = (deg['博士']||0) + (deg['在读博士']||0) + (deg['博士后']||0);
+    const profCount = (deg['教授']||0) + (deg['正高']||0) + (deg['副高']||0);
+    const masterPct = Math.round(masterCount / total * 100);
+    const phdPct = Math.round(phdCount / total * 100);
+    const profPct = Math.round(profCount / total * 100);
+
+    const id = profile.identity;
+    if (id === '硕士生') {
+      if (masterPct >= 40) identityBoost = 10;
+      else if (masterPct >= 20) identityBoost = 5;
+      else if (masterPct >= 10) identityBoost = 0;
+      else if (phdPct >= 70) identityBoost = -15;
+      else if (phdPct >= 50) identityBoost = -8;
+      else identityBoost = -3;
+    } else if (id === '博士生' || id === '博士') {
+      if (phdPct >= 40) identityBoost = 8;
+      else if (phdPct >= 20) identityBoost = 4;
+      else if (phdPct >= 10) identityBoost = 0;
+      else if (profPct >= 60) identityBoost = -8;
+      else identityBoost = -3;
+    } else if (id === '本科生') {
+      if (masterPct >= 30) identityBoost = 5;
+      else if (masterPct >= 15) identityBoost = 0;
+      else identityBoost = -10;
+    } else if (id === '讲师') {
+      if (phdPct >= 20 || masterPct >= 30) identityBoost = 3;
+    }
+  }
+
+  // 知网独作率匹配加成（基于用户身份与期刊独作率）
   const sar = journal.recentSingleAuthorRate;
   const aal = journal.avgArticleLength;
 
@@ -1423,7 +1459,7 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   const ratio = dampedWeight > 0 ? matchCount / dampedWeight : 0;
   return {
     score: Math.min(100, Math.round(
-      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost
+      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost + identityBoost
     )),
     matchedKeywords,
     unmatchedKeywords,
