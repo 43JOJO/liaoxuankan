@@ -1128,8 +1128,8 @@ function authorMeetsRequirement(userIdentity, requirement) {
 // ==================== 语义关联词典 ====================
 // 人文艺术领域同义/近义/关联词扩展，用于跨表述匹配
 const SEMANTIC_MAP = {
-  '非遗': ['非物质文化遗产', '无形文化遗产', '人类非遗', '非遗保护', '非遗传承'],
-  '非物质文化遗产': ['非遗', '无形文化遗产', '活态传承', '传统技艺', '传统美术', '民俗活动', '非遗保护', '非遗活化'],
+  '非遗': ['非物质文化遗产', '无形文化遗产', '人类非遗', '非遗保护', '非遗传承', '非遗教育', '传统技艺', '传统美术', '民俗', '传承人'],
+  '非物质文化遗产': ['非遗', '无形文化遗产', '活态传承', '传统技艺', '传统美术', '民俗活动', '非遗保护', '非遗活化', '非遗传承', '非遗教育', '传承人', '口述传统', '民间艺术'],
   '传统工艺': ['传统技艺', '传统手工艺', '手工技艺', '工艺美术', '民间工艺', '老手艺', '手作'],
   '民间艺术': ['民间美术', '民俗艺术', '乡土艺术', '农民画', '剪纸', '年画', '皮影', '泥塑', '面塑', '民间工艺', '非遗', '非遗保护', '传统美术', '非物质文化遗产', '民俗', '民间手工艺'],
   '民间': ['民间艺术', '民间文化', '民俗', '乡土', '民众', '底层', '草根', '非物质文化遗产'],
@@ -1376,9 +1376,11 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     else if (isSoloStudent && aal <= 4) unitBoost += 3;
   }
 
-  const ratio = totalWeight > 0 ? matchCount / totalWeight : 0;
+  // 用 sqrt 压制关键词数量优势，奖励精准匹配
+  const dampedWeight = Math.sqrt(totalWeight);
+  const ratio = dampedWeight > 0 ? matchCount / dampedWeight : 0;
   return {
-    score: Math.min(100, Math.round(ratio * 80 + domainBoost + unitBoost)),
+    score: Math.min(100, Math.round(Math.min(1, ratio) * 80 + domainBoost + unitBoost)),
     matchedKeywords,
     unmatchedKeywords,
     ratio,
