@@ -2335,13 +2335,22 @@ function scoreXuebao(x, profile) {
   if (profile.unit === 'normal' && (x.level === 'AMI入库' || x.level === 'AMI扩展')) score += 8;
   if (profile.unit === 'vocational' && x.level === 'AMI入库') score += 10;
 
-  // 5. 投稿方向匹配（使用语义扩展 + 双向匹配）
+  // 5. 投稿方向匹配（使用语义扩展 + 子串反向匹配）
   const rawPaperText = (window.currentPaperText || '').toLowerCase();
   const discipline = currentDiscipline || '';
   // 用 SEMANTIC_MAP 扩展论文文本，让"农民画"映射到"民间艺术"等
   const expandedPaperText = (rawPaperText + ' ' + expandWithSynonyms(rawPaperText)).toLowerCase();
   const paperText = (expandedPaperText + ' ' + discipline.toLowerCase());
   const paperTokens = tokenize(paperText);
+  // 从论文中提取所有2-4字子串用于反向匹配
+  const substrings = new Set();
+  for (const tok of paperTokens) {
+    for (let len = 2; len <= Math.min(6, tok.length); len++) {
+      for (let i = 0; i <= tok.length - len; i++) {
+        substrings.add(tok.substring(i, i + len));
+      }
+    }
+  }
 
   if (paperText) {
     let domainHits = 0;
@@ -2359,11 +2368,11 @@ function scoreXuebao(x, profile) {
           if (paperText.includes(dLower)) {
             domainHits += 1;
           }
-          // 反向：domain词包含论文中的关键词（分词后）
+          // 反向：用子串匹配——domain词包含论文的2-4字片段
           else {
-            for (const tok of paperTokens) {
-              if (tok.length >= 2 && dLower.includes(tok)) {
-                domainHits += 0.5;
+            for (const sub of substrings) {
+              if (sub.length >= 2 && dLower.includes(sub)) {
+                domainHits += 0.4;
                 break;
               }
             }
