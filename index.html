@@ -1147,7 +1147,20 @@ const SEMANTIC_MAP = {
   '田野调查': ['田野工作', '实地考察', '参与观察', '民族志', '口述史', '深度访谈'],
   '策展': ['展览策划', '陈列设计', '博物馆展示', '艺术展览', '双年展', '文献展'],
   '传统美术': ['中国画', '书法', '篆刻', '年画', '剪纸', '刺绣', '陶瓷', '漆艺'],
-  '服饰': ['服装', '纺织', '染织', '刺绣', '民族服饰', '时装', '汉服', '首饰']
+  '服饰': ['服装', '纺织', '染织', '刺绣', '民族服饰', '时装', '汉服', '首饰'],
+  // 学术→通俗映射（帮助精细学术概念匹配到粗粒度领域分类）
+  '农民画': ['民间绘画', '乡土绘画', '现代民间绘画', '博里农民画', '户县农民画', '金山农民画'],
+  '民间绘画': ['农民画', '乡土绘画', '现代民间绘画'],
+  '人民性': ['民间', '民众', '平民', '大众文化', '民间艺术', '底层视角'],
+  '文化主体性': ['文化认同', '文化自觉', '主体意识', '身份认同', '文化主体'],
+  '视觉文化': ['视觉研究', '视觉自觉', '视觉意识', '观看方式', '视觉性', '图像研究'],
+  '视觉': ['视觉文化', '视觉艺术', '视觉研究', '图像', '观看'],
+  '民间生成': ['民间', '自发生成', '民间自发', '乡土生成'],
+  '文化记忆': ['集体记忆', '社会记忆', '历史记忆', '记忆传承'],
+  '乡土': ['乡村', '乡土文化', '本土', '地方性', '地域文化'],
+  '地方性': ['本土性', '地域性', '在地性', '场所精神', '地方知识'],
+  '身份认同': ['文化认同', '族群认同', '自我认同', '认同建构'],
+  '图像': ['视觉图像', '图像学', '图像分析', '图像叙事', '图式'],
 };
 
 // 展开用户输入的同义词
@@ -2322,24 +2335,43 @@ function scoreXuebao(x, profile) {
   if (profile.unit === 'normal' && (x.level === 'AMI入库' || x.level === 'AMI扩展')) score += 8;
   if (profile.unit === 'vocational' && x.level === 'AMI入库') score += 10;
 
-  // 5. 投稿方向匹配（基于用户论文 + 学科方向）
-  const paperText = (window.currentPaperText || '').toLowerCase();
+  // 5. 投稿方向匹配（使用语义扩展 + 双向匹配）
+  const rawPaperText = (window.currentPaperText || '').toLowerCase();
   const discipline = currentDiscipline || '';
-  if (paperText || discipline) {
+  // 用 SEMANTIC_MAP 扩展论文文本，让"农民画"映射到"民间艺术"等
+  const expandedPaperText = (rawPaperText + ' ' + expandWithSynonyms(rawPaperText)).toLowerCase();
+  const paperText = (expandedPaperText + ' ' + discipline.toLowerCase());
+  const paperTokens = tokenize(paperText);
+
+  if (paperText) {
     let domainHits = 0;
     const domains = x.domains || [];
     if (domains.length > 0) {
-      // 综合社科学报：什么方向都收，给基础分而非零分
+      // 综合社科学报：什么方向都收，给基础分
       const isGeneralist = domains.length === 1 && domains[0] === '综合社科';
       if (isGeneralist) {
-        domainHits = 0.5; // 50% base match for generalist journals
+        domainHits = 1.0; // 100% match - generalist journals accept all topics
+        score += 15; // Give full base score for generalist journals
       } else {
         for (const d of domains) {
-          if (paperText.includes(d.toLowerCase()) || discipline.includes(d)) domainHits++;
+          const dLower = d.toLowerCase();
+          // 正向：论文文本包含domain词（含语义扩展后）
+          if (paperText.includes(dLower)) {
+            domainHits += 1;
+          }
+          // 反向：domain词包含论文中的关键词（分词后）
+          else {
+            for (const tok of paperTokens) {
+              if (tok.length >= 2 && dLower.includes(tok)) {
+                domainHits += 0.5;
+                break;
+              }
+            }
+          }
         }
+        const domainBoost = Math.round(Math.min(20, domainHits / Math.max(1, domains.length) * 20));
+        score += domainBoost;
       }
-      const domainBoost = Math.round(Math.min(20, domainHits / Math.max(1, domains.length) * 20));
-      score += domainBoost;
     }
   }
 
