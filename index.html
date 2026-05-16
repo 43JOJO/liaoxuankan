@@ -1964,18 +1964,20 @@ function buildStrategyPanel(grouped) {
 
   if (reach.length === 0 && match.length === 0 && safe.length === 0) return '';
 
-  // Pick best from each tier
+  // Pick best from each tier (minimum match score: 25%)
   const pickBest = (list, n) => {
-    return [...list].sort((a, b) => {
-      const sa = a.matchScore * 0.5 + (a.journal.reputation?.score || 50) * 0.3 + (a.journal.wanweiReviewStats?.acceptanceRate || 0) * 0.2;
-      const sb = b.matchScore * 0.5 + (b.journal.reputation?.score || 50) * 0.3 + (b.journal.wanweiReviewStats?.acceptanceRate || 0) * 0.2;
-      return sb - sa;
-    }).slice(0, n);
+    return [...list]
+      .filter(r => r.matchScore >= 25)
+      .sort((a, b) => {
+        const sa = a.matchScore * 0.5 + (a.journal.reputation?.score || 50) * 0.3 + (a.journal.wanweiReviewStats?.acceptanceRate || 0) * 0.2;
+        const sb = b.matchScore * 0.5 + (b.journal.reputation?.score || 50) * 0.3 + (b.journal.wanweiReviewStats?.acceptanceRate || 0) * 0.2;
+        return sb - sa;
+      }).slice(0, n);
   };
 
   const topReach = pickBest(reach, 2);
   const topMatch = pickBest(match, 3);
-  const topSafe = pickBest(safe, 2);
+  const topSafe = pickBest(safe, 3);
 
   const renderRow = (r, idx, tier) => {
     const j = r.journal;
@@ -2054,16 +2056,19 @@ function renderResults(results) {
     resultsCount.innerHTML += ` <span style="color:#999;font-size:0.8rem;">（${blockedCount}本不匹配）</span>`;
   }
 
-  // 投稿策略建议
+  // 投稿策略建议（先清理旧的）
+  const existingStrategy = document.getElementById('strategy-panel');
+  if (existingStrategy) existingStrategy.remove();
+
   if (matchedCount > 0) {
     const strategyHtml = buildStrategyPanel(grouped);
     if (strategyHtml) {
       const strategyDiv = document.createElement('div');
       strategyDiv.id = 'strategy-panel';
       strategyDiv.innerHTML = strategyHtml;
-      const resultsContainer = resultsSection.querySelector('#tier-reach-section')?.parentNode;
-      if (resultsContainer) {
-        resultsContainer.insertBefore(strategyDiv, resultsContainer.firstChild);
+      const resultsSectionInner = document.getElementById('results-section');
+      if (resultsSectionInner) {
+        resultsSectionInner.insertBefore(strategyDiv, resultsSectionInner.firstChild);
       }
     }
   }
