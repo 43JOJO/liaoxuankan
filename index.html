@@ -1409,6 +1409,20 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     }
   }
 
+  // 透明度惩罚：点评极少或无点评的期刊，内部稿嫌疑大
+  let transparencyPenalty = 0;
+  const reviewCount = (journal.wanweiReviews || []).length;
+  const hasEshukanId = !!journal.wanweiId;
+  if (hasEshukanId && reviewCount === 0) {
+    transparencyPenalty = -5; // 有万维页面但0点评 → 缺少外部投稿信号
+  } else if (!hasEshukanId) {
+    transparencyPenalty = -3; // 万维上都没有 → 信息不透明
+  }
+  // 学报 + 无点评 → 内部稿风险更高
+  if (journal.name && journal.name.includes('学报') && reviewCount < 3) {
+    transparencyPenalty -= 4;
+  }
+
   // 身份-作者画像匹配：你是谁 vs 该刊实际发文者构成
   const profile = window.currentProfile || {};
   let identityBoost = 0;
@@ -1487,7 +1501,7 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   const ratio = dampedWeight > 0 ? matchCount / dampedWeight : 0;
   return {
     score: Math.min(100, Math.round(
-      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost + identityBoost
+      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost + identityBoost + transparencyPenalty
     )),
     matchedKeywords,
     unmatchedKeywords,
@@ -1735,6 +1749,15 @@ function determineTier(matchScore, journal) {
 function checkConstraints(journal, profile) {
   const warnings = [];
   let blocked = false;
+
+  // 透明度提示：无点评/点评极少 → 内部稿嫌疑
+  const reviewCount = (journal.wanweiReviews || []).length;
+  if (journal.wanweiId && reviewCount === 0 && !blocked) {
+    warnings.push('该刊暂无万维书刊网点评，外部投稿情况不明，可能以内稿为主');
+  }
+  if (journal.name && journal.name.includes('学报') && reviewCount < 3 && !blocked) {
+    warnings.push('该学报点评极少，注意可能存在本校师生优先的情况');
+  }
 
   // 硬性拦截：硕士独作/本科 → CSSCI扩展版及以上一律不推荐
   const isSoloMaster = profile.identity === '硕士生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
