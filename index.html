@@ -1258,9 +1258,9 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     if (expandedText.includes(kwLower)) {
       matched = true;
     }
-    // 子串滑动窗口匹配
+    // 子串滑动窗口：3-4字（2字如\"艺术\"太泛→西藏艺术误匹配济南泥塑）
     if (!matched && kwLower.length >= 3) {
-      for (let len = 2; len <= Math.min(4, kwLower.length); len++) {
+      for (let len = 3; len <= Math.min(4, kwLower.length); len++) {
         for (let i = 0; i <= kwLower.length - len; i++) {
           if (expandedText.includes(kwLower.substring(i, i + len))) { matched = true; break; }
         }
@@ -1286,7 +1286,7 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
         weight *= 2;
         // 检查子串匹配
         if (weight === kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1) {
-          for (let len = 2; len <= Math.min(4, kwLower.length); len++) {
+          for (let len = 3; len <= Math.min(4, kwLower.length); len++) {
             for (let i = 0; i <= kwLower.length - len; i++) {
               if (titleText.includes(kwLower.substring(i, i + len))) { weight = (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1) * 2; break; }
             }
@@ -1333,7 +1333,7 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
       const colLower = col.toLowerCase();
       if (expandedText.includes(colLower)) { colHits++; }
       else {
-        for (let len = 2; len <= Math.min(4, colLower.length); len++) {
+        for (let len = 3; len <= Math.min(4, colLower.length); len++) {
           let found = false;
           for (let i = 0; i <= colLower.length - len; i++) {
             if (expandedText.includes(colLower.substring(i, i + len))) { colHits += 0.5; found = true; break; }
@@ -2493,10 +2493,10 @@ function scoreXuebao(x, profile) {
   const expandedPaperText = (rawPaperText + ' ' + expandWithSynonyms(rawPaperText)).toLowerCase();
   const paperText = (expandedPaperText + ' ' + discipline.toLowerCase());
   const paperTokens = tokenize(paperText);
-  // 从论文中提取所有2-4字子串用于反向匹配
+  // 从论文中提取所有3-6字子串用于反向匹配（2字太泛）
   const substrings = new Set();
   for (const tok of paperTokens) {
-    for (let len = 2; len <= Math.min(6, tok.length); len++) {
+    for (let len = 3; len <= Math.min(6, tok.length); len++) {
       for (let i = 0; i <= tok.length - len; i++) {
         substrings.add(tok.substring(i, i + len));
       }
