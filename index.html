@@ -1164,19 +1164,13 @@ const SEMANTIC_MAP = {
   '图像': ['视觉图像', '图像学', '图像分析', '图像叙事', '图式'],
 };
 
-// 展开用户输入的同义词（两轮：第一轮扩展后再扩展新词）
+// 展开用户输入的同义词（单轮，通过完整语义链覆盖多跳）
 function expandWithSynonyms(text) {
   const expanded = new Set();
   const lower = text.toLowerCase();
   for (const [key, synonyms] of Object.entries(SEMANTIC_MAP)) {
     if (lower.includes(key.toLowerCase())) { expanded.add(key); for (const s of synonyms) expanded.add(s); }
     for (const s of synonyms) { if (lower.includes(s.toLowerCase())) { expanded.add(key); expanded.add(s); } }
-  }
-  // 第二轮：用第一轮的结果再扩展一次（如 农民画→民间艺术→非物质文化遗产）
-  const pass1 = [...expanded].join(' ').toLowerCase();
-  for (const [key, synonyms] of Object.entries(SEMANTIC_MAP)) {
-    if (pass1.includes(key.toLowerCase()) && !expanded.has(key)) { expanded.add(key); for (const s of synonyms) expanded.add(s); }
-    for (const s of synonyms) { if (pass1.includes(s.toLowerCase()) && !expanded.has(s)) { expanded.add(key); expanded.add(s); } }
   }
   return [...expanded].join(' ');
 }
