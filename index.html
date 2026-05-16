@@ -2341,7 +2341,7 @@ function scoreXuebao(x, profile) {
   const name = x.name || '';
   const isHumanitiesSearch = /美术|艺术|设计|非遗|民俗|文学|历史|哲学|文化|教育|音乐|舞蹈|戏剧|影视|书法|工艺/.test(paperText) ||
                              /美术|艺术|设计|非遗|民俗|文学|历史|哲学/.test(discipline);
-  const isNaturalScience = /自然|科学|医学|药学|农学|林学|水产|畜牧|兽医|地质|矿业|石油|化工|材料|电气|机械|土木|建筑|环境|生态|大气|海洋|物理|化学|数学|计算机|软件|信息/.test(name);
+  const isNaturalScience = /自然|科学|医学|医药|中医|药学|农学|林学|水产|畜牧|兽医|地质|矿业|石油|化工|材料|电气|机械|土木|建筑|环境|生态|大气|海洋|物理|化学|数学|计算机|软件|信息/.test(name);
   const isSocialScience = /社会|哲学|人文|社科|经济|管理|法学|政治|教育|语言|外语|文学|心理/.test(name);
 
   if (isHumanitiesSearch) {
