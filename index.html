@@ -1370,6 +1370,16 @@ function getEaseScore(journal) {
   const freq = journal.frequency || '';
   const cycle = journal.reviewCycle || '';
 
+  // 0. 硕士独作/本科无导师 → 核心期刊大幅减分
+  const profile = window.currentProfile || {};
+  const isSoloStudent = (profile.identity === '硕士生' || profile.identity === '本科生')
+                        && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  const isSoloMaster = profile.identity === '硕士生'
+                       && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  if (isSoloStudent && (cl.includes('CSSCI') || cl === 'SSCI' || cl === 'A&HCI')) score -= 25;
+  else if (isSoloMaster && (cl === '北大核心' || cl === 'AMI权威' || cl === 'AMI顶级' || cl === 'AMI核心')) score -= 15;
+  else if (isSoloStudent && (cl === '北大核心' || cl === 'AMI核心')) score -= 10;
+
   // 1. 身份门槛 (0-30)：越低越容易
   if (req.includes('无硬性') || req.includes('无身份')) score += 30;
   else if (req.includes('不限') && !req.includes('博士')) score += 28;
@@ -1553,13 +1563,24 @@ function determineTier(matchScore, journal) {
     return tier;
   }
 
+  // 硕士独作/无资源 → 核心期刊门槛提高
+  const profile = window.currentProfile || {};
+  const isSoloMaster = profile.identity === '硕士生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  const isSoloBachelor = profile.identity === '本科生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  const hasNoResources = profile.funding === 'no' && (profile.unit === 'normal' || profile.unit === 'vocational');
+
+  let hardMode = 0;
+  if (isSoloMaster && hasNoResources) hardMode = 15; // 硕士独作+无资源→门槛+15分
+  else if (isSoloMaster) hardMode = 10;
+  else if (isSoloBachelor) hardMode = 20;
+
   // 冲刺：高匹配 + 顶级/核心期刊
-  if (matchScore >= 50 && isTop) return adjusted('reach');
-  if (matchScore >= 55 && isCore) return adjusted('reach');
+  if (matchScore >= 50 + hardMode && isTop) return adjusted('reach');
+  if (matchScore >= 55 + hardMode && isCore) return adjusted('reach');
 
   // 匹配：中等匹配 + 核心期刊，或高匹配 + 扩展期刊
-  if (matchScore >= 40 && isCore) return adjusted('match');
-  if (matchScore >= 45 && !isTop && !isEntry) return adjusted('match');
+  if (matchScore >= 40 + hardMode && isCore) return adjusted('match');
+  if (matchScore >= 45 + hardMode * 0.7 && !isTop && !isEntry) return adjusted('match');
 
   // 保底：容易发表（ease>=60）且有基本匹配（>=15）
   if (ease >= 60 && matchScore >= 15) return adjusted('safe');
@@ -1589,7 +1610,6 @@ function checkConstraints(journal, profile) {
   if (profile.identity && journal.authorRequirement) {
     const result = authorMeetsRequirement(effectiveIdentity, journal.authorRequirement);
     if (!result.meets) {
-      // 身份不满足 → 有导师支持时警告，无导师时直接拦截
       if (supervisorAvailable) {
         const tail = profile.supervisor === 'maybe' ? '（注：导师挂名意向待确认）' : '';
         warnings.push(`身份不满足：该刊要求${result.minLevel}，有导师支持可尝试${tail}`);
@@ -1598,10 +1618,23 @@ function checkConstraints(journal, profile) {
         warnings.push(`身份不匹配：该刊要求${result.minLevel}，你为${effectiveIdentity}（有导师支持可改善）`);
       }
     } else if (result.minLevel && result.minLevel !== '不限') {
-      // 满足但边际 → 只在竞争激烈时提示
-      const ease = getEaseScore(journal);
-      if (profile.identity === '硕士生' && result.minLevel.includes('硕士') && !supervisorAvailable && ease < 55) {
-        warnings.push(`你的身份可满足，但该刊竞争较大，建议有导师支持`);
+      // 要求中提到需要导师但用户没有 → 对核心期刊直接拦截
+      if (result.minLevel.includes('导师') && !supervisorAvailable) {
+        const cl = journal.catalogLevel || '';
+        const isCore = cl.includes('CSSCI') || cl === '北大核心' || cl === 'AMI权威' || cl === 'AMI顶级' || cl === 'AMI核心';
+        if (isCore) {
+          blocked = true;
+          warnings.push(`该刊明确要求${result.minLevel}，你目前无导师支持，建议改投低一级期刊`);
+        } else {
+          warnings.push(`该刊要求${result.minLevel}，无导师支持情况下难度很大`);
+        }
+      }
+      // 边际满足但竞争大
+      else if (profile.identity === '硕士生' && result.minLevel.includes('硕士') && !supervisorAvailable) {
+        const ease = getEaseScore(journal);
+        if (ease < 55) {
+          warnings.push(`你的身份可满足，但该刊竞争较大，建议有导师支持`);
+        }
       }
     }
   }
