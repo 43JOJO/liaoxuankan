@@ -375,6 +375,15 @@ footer {
         <option value="其他">其他</option>
       </select>
     </div>
+    <div class="form-group" id="degree-group" style="display:none;">
+      <label>最高学历 <span class="hint">· 你的最终学位</span></label>
+      <select id="profile-degree">
+        <option value="">请选择</option>
+        <option value="博士">博士</option>
+        <option value="硕士">硕士</option>
+        <option value="本科">本科</option>
+      </select>
+    </div>
     <div class="form-group">
       <label>版面费预算</label>
       <select id="profile-budget">
@@ -397,7 +406,7 @@ footer {
       </select>
     </div>
     <div class="form-group">
-      <label>单位层次</label>
+      <label id="unit-label">单位层次 <span class="hint" id="unit-hint">· 你目前就读/任职的高校</span></label>
       <select id="profile-unit">
         <option value="">不限</option>
         <option value="985">985高校</option>
@@ -524,13 +533,15 @@ footer {
         </optgroup>
       </select>
     </div>
-    <div class="form-group">
-      <label>导师挂名支持 <span class="hint">· 导师是否愿意通讯/一作</span></label>
+    <div class="form-group" id="supervisor-group">
+      <label id="supervisor-label">导师挂名支持 <span class="hint" id="supervisor-hint">· 导师是否愿意通讯/一作</span></label>
       <select id="profile-supervisor">
         <option value="">未确定</option>
-        <option value="yes">有导师支持（通讯/一作）</option>
-        <option value="maybe">导师可挂名但不一定</option>
-        <option value="no">独作/导师不支持挂名</option>
+        <option value="yes" class="sup-student">有导师支持（通讯/一作）</option>
+        <option value="yes" class="sup-teacher" style="display:none;">有教授/前辈合作支持</option>
+        <option value="maybe" class="sup-student">导师可挂名但不一定</option>
+        <option value="maybe" class="sup-teacher" style="display:none;">有合作意向但未确定</option>
+        <option value="no">独作/无导师支持</option>
       </select>
     </div>
   </div>
@@ -1468,35 +1479,50 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
     const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
     const phdCount = (deg['博士']||0) + (deg['在读博士']||0) + (deg['博士后']||0);
-    const profCount = (deg['教授']||0) + (deg['正高']||0) + (deg['副高']||0);
     const masterPct = Math.round(masterCount / total * 100);
     const phdPct = Math.round(phdCount / total * 100);
-    const profPct = Math.round(profCount / total * 100);
 
     const id = profile.identity;
+    const degLevel = profile.degree;
+
     if (id === '硕士生') {
-      // 硕士匹配：不仅要看硕士占比，还要看博士占比是否过高（过高说明硕士基本靠关系）
-      if (phdPct >= 70 && masterPct < 25) identityBoost = -18;  // 博士垄断，硕士基本没机会
+      if (phdPct >= 70 && masterPct < 25) identityBoost = -18;
       else if (phdPct >= 60 && masterPct < 25) identityBoost = -12;
-      else if (masterPct >= 40) identityBoost = 10;              // 真正硕士友好
-      else if (masterPct >= 25) identityBoost = 3;               // 有一定空间
-      else if (masterPct >= 15) identityBoost = -3;              // 少数硕士，疑似关系户
+      else if (masterPct >= 40) identityBoost = 10;
+      else if (masterPct >= 25) identityBoost = 3;
+      else if (masterPct >= 15) identityBoost = -3;
       else if (phdPct >= 50) identityBoost = -10;
       else identityBoost = -5;
     } else if (id === '博士生' || id === '博士') {
       if (phdPct >= 40) identityBoost = 8;
       else if (phdPct >= 20) identityBoost = 4;
       else if (phdPct >= 10) identityBoost = 0;
-      else if (profPct >= 60) identityBoost = -8;
-      else identityBoost = -3;
+      else if (masterPct >= 50) identityBoost = -5;
+      else identityBoost = -8;
     } else if (id === '本科生') {
       if (masterPct >= 35) identityBoost = 5;
       else if (masterPct >= 20) identityBoost = 0;
       else if (phdPct >= 50) identityBoost = -15;
       else identityBoost = -8;
     } else if (id === '讲师') {
-      if (phdPct >= 20 || masterPct >= 30) identityBoost = 3;
-      else if (phdPct >= 50) identityBoost = -5;
+      if (phdPct >= 60 && masterPct < 20) identityBoost = -8;
+      else if (phdPct >= 50 && masterPct < 25) identityBoost = -3;
+      else if (masterPct >= 30) identityBoost = 6;
+      else if (phdPct >= 20 || masterPct >= 15) identityBoost = 2;
+      else identityBoost = -2;
+      if (degLevel === '硕士') identityBoost -= 3;
+      else if (degLevel === '本科') identityBoost -= 6;
+    } else if (id === '副教授') {
+      if (phdPct >= 40) identityBoost = 7;
+      else if (phdPct >= 20) identityBoost = 4;
+      else if (masterPct >= 30) identityBoost = 2;
+      else identityBoost = 0;
+      if (degLevel === '硕士') identityBoost -= 2;
+    } else if (id === '教授') {
+      if (phdPct >= 50) identityBoost = 6;
+      else if (phdPct >= 30) identityBoost = 4;
+      else if (masterPct >= 30) identityBoost = 3;
+      else identityBoost = 1;
     }
   }
 
@@ -1756,9 +1782,19 @@ function determineTier(matchScore, journal) {
   const hasNoResources = profile.funding === 'no' && (profile.unit === 'normal' || profile.unit === 'vocational');
 
   let hardMode = 0;
-  if (isSoloMaster && hasNoResources) hardMode = 15; // 硕士独作+无资源→门槛+15分
+  if (isSoloMaster && hasNoResources) hardMode = 15;
   else if (isSoloMaster) hardMode = 10;
   else if (isSoloBachelor) hardMode = 20;
+
+  // 讲师/副教授：顶级期刊竞争烈度微调（不封锁，但提高匹配门槛以反映真实竞争）
+  const isLecturer = profile.identity === '讲师';
+  const isAssociateProf = profile.identity === '副教授';
+  if (isLecturer && isTop && (acceptanceRate !== null && acceptanceRate < 10 && stats.total >= 3)) {
+    hardMode = 5; // 录用率极低的CSSCI来源刊，讲师竞争较大
+  }
+  if (isAssociateProf && isTop && (acceptanceRate !== null && acceptanceRate < 5 && stats.total >= 3)) {
+    hardMode = 3; // 录用率极低的顶刊，副教授也需要更多匹配度
+  }
 
   // 冲刺：高匹配 + 顶级/核心期刊
   if (matchScore >= 50 + hardMode && isTop) return adjusted('reach');
@@ -1818,6 +1854,15 @@ function checkConstraints(journal, profile) {
   if (supervisorAvailable && profile.identity === '博士生') effectiveIdentity = '讲师';
   if (supervisorAvailable && profile.identity === '本科生') effectiveIdentity = '硕士生';
 
+  // 学历修正：非学生身份的学历不足可能导致实际竞争力降级
+  const degree = profile.degree;
+  const isTeacher = ['讲师','副教授','教授'].includes(profile.identity);
+  if (degree && isTeacher) {
+    if (degree === '硕士' && profile.identity === '副教授') effectiveIdentity = '讲师';
+    else if (degree === '硕士' && profile.identity === '讲师') effectiveIdentity = '博士生';
+    else if (degree === '本科' && profile.identity === '讲师') effectiveIdentity = '博士生';
+  }
+
   if (profile.identity && journal.authorRequirement) {
     const result = authorMeetsRequirement(effectiveIdentity, journal.authorRequirement);
     if (!result.meets) {
@@ -1873,6 +1918,23 @@ function checkConstraints(journal, profile) {
     if (profile.identity === '本科生' && masterPct < 5 && phdPct > 60 && !supervisorAvailable) {
       blocked = true;
       warnings.push('该刊实际投稿者中博士占' + Math.round(phdPct) + '%，本科生极少。建议有导师支持后再试');
+    }
+    // 讲师/副教授竞争烈度感知
+    if (profile.identity === '讲师' && phdPct >= 70 && masterPct < 20) {
+      warnings.push('该刊投稿者以博士为主(' + Math.round(phdPct) + '%)，多为教授/副教授指导的博士生群体。讲师可尝试，但竞争较大');
+    } else if (profile.identity === '讲师' && masterPct >= 35) {
+      warnings.push('该刊硕士占比' + Math.round(masterPct) + '%，作者群体偏年轻，讲师投稿有一定身份优势');
+    }
+    if (profile.identity === '副教授' && phdPct >= 70 && masterPct < 10) {
+      warnings.push('该刊以博士投稿者为主(' + Math.round(phdPct) + '%)，副教授身份有优势，建议关注刊物收稿倾向的契合度');
+    }
+    // 学历与期刊层次不匹配警告
+    if (degree && profile.identity === '讲师' && degree === '硕士') {
+      const cl = journal.catalogLevel || '';
+      const isHigh = cl.includes('CSSCI') || cl === '北大核心' || cl === 'AMI权威' || cl === 'AMI顶级';
+      if (isHigh && phdPct >= 50) {
+        warnings.push('你为硕士学历讲师，该刊投稿者博士占' + Math.round(phdPct) + '%，学历竞争处于劣势。建议优先投AMI核心/扩展级期刊');
+      }
     }
   } else if (journal.realAuthorProfile && profile.identity) {
     // 回退：文本推断（无 authorDistribution 数据时）
@@ -1963,22 +2025,77 @@ function getUserLabel(profile) {
   const unitLabels = { '985': '985高校', '211': '211高校', 'normal': '普通高校', 'vocational': '高职', 'independent': '独立学者' };
   const unitLabel = unitLabels[profile.unit] || '';
   if (unitLabel) parts.push(unitLabel);
-  // 身份
-  if (profile.identity) parts.push(profile.identity);
-  // 导师支持
-  const supLabels = { 'yes': '有导师支持', 'maybe': '导师可挂名', 'no': '独作' };
-  const supLabel = supLabels[profile.supervisor] || '';
-  if (supLabel) parts.push(supLabel);
+  // 身份 + 学历（非学生身份时显示学历）
+  const isStudent = ['本科生','硕士生','博士生'].includes(profile.identity);
+  if (profile.identity) {
+    const degreeStr = (!isStudent && profile.degree) ? profile.identity + '（' + profile.degree + '）' : profile.identity;
+    parts.push(degreeStr);
+  }
+  // 导师/合作支持
+  if (isStudent) {
+    const supLabels = { 'yes': '有导师支持', 'maybe': '导师可挂名', 'no': '独作' };
+    const supLabel = supLabels[profile.supervisor] || '';
+    if (supLabel) parts.push(supLabel);
+  } else if (profile.identity && profile.supervisor === 'yes') {
+    parts.push('有合作支持');
+  } else if (profile.identity && profile.supervisor === 'no') {
+    parts.push('独立投稿');
+  }
   // 基金
   if (profile.funding === 'yes') parts.push('有基金');
 
   return parts.join(' · ') || '未设置身份';
 }
 
+// 根据身份动态调整表单
+function updateFormForIdentity() {
+  const id = $('profile-identity').value;
+  const isStudent = ['本科生','硕士生','博士生',''].includes(id);
+  const isTeacher = ['讲师','副教授','教授'].includes(id);
+
+  // 学历字段：教师身份显示
+  $('degree-group').style.display = isTeacher ? '' : 'none';
+
+  // 导师/合作支持标签和选项
+  const stuOpts = document.querySelectorAll('.sup-student');
+  const tchOpts = document.querySelectorAll('.sup-teacher');
+  if (isTeacher) {
+    // 单位层次标签
+    $('unit-label').innerHTML = '所在单位层次 <span class="hint" id="unit-hint">· 你目前任职的高校</span>';
+    // 合作者支持
+    $('supervisor-label').innerHTML = '合作者支持 <span class="hint" id="supervisor-hint">· 是否有教授/前辈合作</span>';
+    stuOpts.forEach(o => { o.style.display = 'none'; });
+    tchOpts.forEach(o => { o.style.display = ''; });
+  } else {
+    // 单位层次标签
+    $('unit-label').innerHTML = '就读高校层次 <span class="hint" id="unit-hint">· 你目前就读的高校</span>';
+    // 导师支持
+    $('supervisor-label').innerHTML = '导师挂名支持 <span class="hint" id="supervisor-hint">· 导师是否愿意通讯/一作</span>';
+    stuOpts.forEach(o => { o.style.display = ''; });
+    tchOpts.forEach(o => { o.style.display = 'none'; });
+  }
+  // 重置合作者/导师选项到默认
+  if ($('profile-supervisor').value && (isTeacher || isStudent)) {
+    // 切换时不清空，但确保显示的值在可见选项中
+    const visOpts = [...$('profile-supervisor').querySelectorAll('option')].filter(o => o.style.display !== 'none');
+    const curVal = $('profile-supervisor').value;
+    if (!visOpts.some(o => o.value === curVal)) {
+      $('profile-supervisor').value = '';
+    }
+  }
+}
+
+// 页面加载时绑定身份联动
+document.addEventListener('DOMContentLoaded', function() {
+  $('profile-identity').addEventListener('change', updateFormForIdentity);
+  updateFormForIdentity(); // 初始状态
+});
+
 // 主搜索函数
 function doSearch() {
   const profile = {
     identity: $('profile-identity').value,
+    degree: $('profile-degree').value,
     budget: $('profile-budget').value,
     timeline: $('profile-timeline').value,
     unit: $('profile-unit').value,
@@ -2410,6 +2527,36 @@ function buildRecommendReasons(journal, item) {
           desc = `投稿者以硕博为主，本科建议有导师支持`;
           strength = -2;
         }
+      } else if (id === '讲师') {
+        if (phdPct >= 30 && masterPct < 40) {
+          desc = `投稿者中博士占${phdPct}%、硕士占${masterPct}%，讲师身份处于较有利的竞争位置`;
+          strength = 7;
+        } else if (phdPct >= 20) {
+          desc = `投稿者中博士占${phdPct}%、硕士占${masterPct}%，讲师身份有竞争力`;
+          strength = 5;
+        } else if (phdPct < 10 && masterPct < 15) {
+          desc = `该刊投稿者学位分布稀疏，可能以约稿/推荐为主，建议先联系编辑部`;
+          strength = -1;
+        } else if (masterPct >= 30) {
+          desc = `投稿者中硕士占${masterPct}%，该刊对非教授作者较开放，讲师可投`;
+          strength = 4;
+        }
+      } else if (id === '副教授') {
+        if (phdPct >= 40) {
+          desc = `投稿者中博士占${phdPct}%，你资历高于多数作者，处于有利位置`;
+          strength = 8;
+        } else if (phdPct >= 20) {
+          desc = `投稿者中博士占${phdPct}%，你的身份满足该刊常规要求`;
+          strength = 6;
+        }
+      } else if (id === '教授') {
+        if (phdPct >= 30) {
+          desc = `投稿者中博士占${phdPct}%，你的资历在投稿群体中属于顶层`;
+          strength = 9;
+        } else {
+          desc = `你的身份远超该刊常规投稿群体，具有明显优势`;
+          strength = 8;
+        }
       }
     }
     // 回退到文本推断
@@ -2419,6 +2566,8 @@ function buildRecommendReasons(journal, item) {
         desc = '该刊无身份限制，适合所有作者';
       } else if (id === '教授' || id === '副教授') {
         desc = '资深作者身份，符合该刊偏好';
+      } else if (id === '讲师' && (req.includes('博士') || req.includes('硕士'))) {
+        desc = '讲师身份符合该刊要求';
       } else if (id === '博士生' && (req.includes('博士') || req.includes('硕士'))) {
         desc = '博士独作可投';
       } else if (id === '硕士生' && supervisorAvailable && req.includes('博士')) {
@@ -3063,13 +3212,17 @@ function getDifficultyStyle(difficulty) {
 function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding, journal) {
   const tips = {
     友好: {
-      teacher: '该群体是该刊主力作者',
+      professor: '教授身份是该刊核心作者群体',
+      associate: '副教授是主要作者群体之一',
+      lecturer: '讲师是该刊核心作者群体，可放心投稿',
       phd: '博士独作可投，是该刊重要作者来源',
       master: '该刊接受硕士独作，可直接尝试',
       bachelor: '本科罕见，可尝试'
     },
     可尝试: {
-      teacher: '需论文质量较强',
+      professor: '教授身份有竞争力，关注论文选题匹配',
+      associate: '需论文质量较强，竞争来自同级别和教授',
+      lecturer: '论文质量过硬可尝试，讲师群体在此刊有一定空间',
       phd: '需有亮眼成果或导师推荐',
       masterSolo: '论文质量过硬可独作尝试',
       masterSup: '导师挂名 + 论文扎实有机会',
@@ -3077,7 +3230,9 @@ function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding,
       bachelorSup: '本科罕见，需导师强支持 + 论文有亮点'
     },
     较大: {
-      teacher: '需论文质量过硬',
+      professor: '该刊竞争较大，以更资深作者为主',
+      associate: '该刊以教授群体为主，需论文有较强创新',
+      lecturer: '该刊讲师作者占比不高，建议有合作者或论文质量过硬',
       phd: '建议有亮眼成果或导师推荐',
       masterSolo: '建议争取导师挂名通讯，或论文有亮眼成果',
       masterSup: '需导师强力支持 + 论文质量过硬',
@@ -3085,7 +3240,9 @@ function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding,
       bachelorSup: '本科罕见，需导师强支持 + 论文有亮点'
     },
     极大: {
-      teacher: '该刊以更资深作者为主，需论文极强',
+      professor: '该刊几乎不收校外学者，以内稿和约稿为主',
+      associate: '该刊以教授/顶级学者为主，建议关注扩展或入库级',
+      lecturer: '该刊对讲师较难，建议改投AMI入库或普通期刊',
       phd: '该刊以教授为主，建议改投合适层级',
       masterSolo: '强烈建议争取导师挂名通讯',
       masterSup: '该刊几乎不收硕士稿件，建议改投扩展或入库刊',
@@ -3094,7 +3251,9 @@ function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding,
   };
 
   let tipKey;
-  if (id === '教授' || id === '副教授' || id === '讲师') tipKey = 'teacher';
+  if (id === '教授') tipKey = 'professor';
+  else if (id === '副教授') tipKey = 'associate';
+  else if (id === '讲师') tipKey = 'lecturer';
   else if (id === '博士生' || id === '博士') tipKey = 'phd';
   else if (id === '硕士生') {
     if (difficulty === '友好') tipKey = 'master';
@@ -3106,7 +3265,7 @@ function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding,
     return '请参考"实际作者画像"自行判断';
   }
 
-  const baseTip = (tips[difficulty] && tips[difficulty][tipKey]) || tips[difficulty].teacher;
+  const baseTip = (tips[difficulty] && tips[difficulty][tipKey]) || '请参考投稿者身份分布自行判断';
 
   if (hasFunding) {
     const fundPrefix = requiresFunding
@@ -3137,6 +3296,7 @@ function getDifficultyForUser(journal, profile) {
   const supervisor = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
   const supervisorTail = profile.supervisor === 'maybe' ? '（待确认）' : '';
   const hasFunding = profile.funding === 'yes';
+  const degree = profile.degree;
   const requiresFunding = !!journal.requiresFunding;
 
   let myShare = 0, label = '', difficulty = '';
@@ -3155,16 +3315,25 @@ function getDifficultyForUser(journal, profile) {
     const masterPct = Math.round(masterCount / total * 100);
 
     // Map user identity to real distribution
-    if (id === '教授' || id === '副教授') {
-      myShare = Math.round(professorCount / total * 100) || 5;
-      label = id;
-      difficulty = myShare >= 20 ? '友好' : '可尝试';
+    if (id === '教授') {
+      // 数据仅含学位分布，教授级别用博士占比衡量（博士占比越高说明该刊学术门槛越高）
+      myShare = phdPct >= 30 ? Math.round(phdPct) : 15;
+      label = '教授';
+      difficulty = phdPct >= 30 ? '友好' : '可尝试';
+    } else if (id === '副教授') {
+      myShare = Math.round(phdPct * 0.9) || 10;
+      label = '副教授';
+      difficulty = myShare >= 25 ? '友好' : '可尝试';
     } else if (id === '讲师') {
-      myShare = Math.round(professorCount / total * 100 * 0.6) || 3;
-      // Also consider phd representation
-      if (phdPct >= 20) myShare = Math.max(myShare, Math.round(phdPct * 0.5));
+      // 讲师在博士和副教授之间：博士占比反映学术竞争水平，硕士占比反映该刊开放度
+      const phdShare = Math.round(phdPct * 0.8);
+      const masterOpenness = Math.round(masterPct * 0.4);
+      myShare = Math.max(phdShare, masterOpenness, 3);
       label = '讲师';
-      difficulty = myShare >= 15 ? '可尝试' : myShare >= 8 ? '较大' : '极大';
+      if (myShare >= 25) difficulty = '友好';
+      else if (myShare >= 15) difficulty = '可尝试';
+      else if (myShare >= 8) difficulty = '较大';
+      else difficulty = '极大';
     } else if (id === '博士生' || id === '博士') {
       myShare = phdPct || 3;
       label = '博士';
@@ -3219,9 +3388,12 @@ function getDifficultyForUser(journal, profile) {
 
     if (id === '教授') {
       myShare = comp.identity.professor; label = '教授'; difficulty = '友好';
-    } else if (id === '副教授' || id === '讲师') {
-      myShare = comp.identity.associate; label = id;
+    } else if (id === '副教授') {
+      myShare = comp.identity.associate; label = '副教授';
       difficulty = myShare >= 30 ? '友好' : '可尝试';
+    } else if (id === '讲师') {
+      myShare = Math.round(comp.identity.associate * 0.65); label = '讲师';
+      difficulty = myShare >= 20 ? '可尝试' : myShare >= 10 ? '较大' : '极大';
     } else if (id === '博士生' || id === '博士') {
       myShare = comp.identity.phd; label = '博士';
       if (myShare >= 25) difficulty = '友好';
@@ -3252,6 +3424,14 @@ function getDifficultyForUser(journal, profile) {
     } else {
       myShare = comp.identity.other; label = '其他作者'; difficulty = '可尝试';
     }
+  }
+
+  // 学历调整：非学生身份的学历不足导致竞争力降级
+  if (degree && !['本科生','硕士生','博士生'].includes(id) && usedRealData) {
+    const upgrade = { 友好: '可尝试', 可尝试: '较大', 较大: '极大' };
+    if (degree === '硕士' && id === '讲师') { if (upgrade[difficulty]) difficulty = upgrade[difficulty]; myShare = Math.round(myShare * 0.7); }
+    else if (degree === '本科' && id === '讲师') { if (upgrade[difficulty]) difficulty = upgrade[difficulty]; difficulty = upgrade[difficulty] || difficulty; myShare = Math.round(myShare * 0.5); }
+    else if (degree === '硕士' && id === '副教授') { if (upgrade[difficulty] && myShare < 30) difficulty = upgrade[difficulty]; myShare = Math.round(myShare * 0.8); }
   }
 
   if (hasFunding) {
