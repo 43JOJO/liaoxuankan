@@ -52,12 +52,41 @@ enrich-journal-data.js
 fix-reviews-data.js
 fix-dirty-now.js
 
+# === 抓取数据(本地使用，不应公开中间产物) ===
+batch-scrape-cnki.js
+batch-retry-cnki.js
+batch-update-cnki.js
+batch-mini-cnki.js
+merge-retry.js
+scrape-xuebao-eshukan.js
+scrape-xuebao-round2.js
+debug-kw.js
+debug-search.js
+test-*.js
+*debug*.js
+*_debug*.js
+
+# === AI 审计文件(临时) ===
+final-audit.js
+hardmode-audit.js
+strategy-audit.js
+score-audit.js
+audit-functions.js
+semantic-map.js
+debug-functions.js
+
 # === 临时文件 ===
 *.tmp
 *~
 *.log
 chrome-profile/
+chrome-profile-*/
+cnki-*.json
+test-cnki-*.json
+*catalog-check*.json
+eshukan-xuebao-data.json
 wanweixueshu-art-data.json
+cssci-images/
 wanweixueshu-progress.json
 eshukan-data.json
 eshukan-data.json.bak*

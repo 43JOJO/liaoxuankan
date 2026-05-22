@@ -87,6 +87,13 @@ header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
 }
 .form-group textarea { min-height: 70px; }
 
+.toggle-advanced {
+  display: block; width: 100%; margin-top: 12px; padding: 7px 0;
+  background: none; border: 1px solid #d4c5a0; border-radius: 6px;
+  color: #8b6914; font-size: 0.82rem; cursor: pointer; transition: all 0.2s;
+}
+.toggle-advanced:hover { border-color: var(--primary-light); color: var(--primary); background: #fdf8f8; }
+
 /* Upload area */
 .upload-zone {
   border: 2px dashed var(--border);
@@ -213,9 +220,9 @@ header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
   cursor: pointer;
 }
 .journal-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-.journal-card.tier-reach { border-left-color: #c62828; }
-.journal-card.tier-match { border-left-color: #1565c0; }
-.journal-card.tier-safe { border-left-color: #2e7d32; }
+.journal-card.tier-reach { border-left: 5px solid #c62828; background: linear-gradient(90deg, #fff5f5 0%, #fff 8%); }
+.journal-card.tier-match { border-left: 5px solid #1565c0; background: linear-gradient(90deg, #f5f8ff 0%, #fff 8%); }
+.journal-card.tier-safe { border-left: 5px solid #2e7d32; background: linear-gradient(90deg, #f5fff5 0%, #fff 8%); }
 
 .jc-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
 .jc-name { font-size: 1.05rem; font-weight: 700; color: var(--text); }
@@ -359,7 +366,7 @@ footer {
 </header>
 
 <!-- 用户画像 -->
-<div class="card">
+<div class="card" id="profile-card">
   <div class="section-title">一、你的投稿条件</div>
   <div class="form-grid col-3">
     <div class="form-group">
@@ -372,6 +379,7 @@ footer {
         <option value="讲师">讲师</option>
         <option value="副教授">副教授</option>
         <option value="教授">教授</option>
+        <option value="博士后">博士后</option>
         <option value="其他">其他</option>
       </select>
     </div>
@@ -384,6 +392,31 @@ footer {
         <option value="本科">本科</option>
       </select>
     </div>
+    <div class="form-group">
+      <label id="unit-label">单位层次 <span class="hint" id="unit-hint">· 你目前就读/任职的高校</span></label>
+      <select id="profile-unit">
+        <option value="">不限</option>
+        <option value="985">985高校</option>
+        <option value="211">211高校</option>
+        <option value="normal">普通高校</option>
+        <option value="vocational">高职/专科</option>
+        <option value="independent">独立学者</option>
+      </select>
+    </div>
+    <div class="form-group" id="supervisor-group">
+      <label id="supervisor-label">导师挂名支持 <span class="hint" id="supervisor-hint">· 导师是否愿意通讯/一作</span></label>
+      <select id="profile-supervisor">
+        <option value="">未确定</option>
+        <option value="yes" class="sup-student">有导师支持（通讯/一作）</option>
+        <option value="yes" class="sup-teacher" style="display:none;">有教授/前辈合作支持</option>
+        <option value="maybe" class="sup-student">导师可挂名但不一定</option>
+        <option value="maybe" class="sup-teacher" style="display:none;">有合作意向但未确定</option>
+        <option value="no">独作/无导师支持</option>
+      </select>
+    </div>
+  </div>
+  <button type="button" id="toggle-advanced" class="toggle-advanced" onclick="toggleAdvanced()">▸ 更多筛选条件（预算、时间、基金、省份…）</button>
+  <div class="form-grid col-3" id="advanced-fields" style="display:none;">
     <div class="form-group">
       <label>版面费预算</label>
       <select id="profile-budget">
@@ -406,14 +439,11 @@ footer {
       </select>
     </div>
     <div class="form-group">
-      <label id="unit-label">单位层次 <span class="hint" id="unit-hint">· 你目前就读/任职的高校</span></label>
-      <select id="profile-unit">
+      <label>基金支持</label>
+      <select id="profile-funding">
         <option value="">不限</option>
-        <option value="985">985高校</option>
-        <option value="211">211高校</option>
-        <option value="normal">普通高校</option>
-        <option value="vocational">高职/专科</option>
-        <option value="independent">独立学者</option>
+        <option value="yes">有基金项目</option>
+        <option value="no">无基金项目</option>
       </select>
     </div>
     <div class="form-group">
@@ -459,89 +489,12 @@ footer {
       <label>具体单位名称 <span class="hint">· 可选，用于本校学报识别</span></label>
       <input type="text" id="profile-unit-name" placeholder="如：郑州大学">
     </div>
-    <div class="form-group">
-      <label>基金支持</label>
-      <select id="profile-funding">
-        <option value="">不限</option>
-        <option value="yes">有基金项目</option>
-        <option value="no">无基金项目</option>
-      </select>
-    </div>
     <div class="form-group" style="display:none;">
       <label>论文语言</label>
       <select id="profile-language">
         <option value="">不限</option>
         <option value="中文" selected>中文</option>
         <option value="英文">英文</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>专业方向 <span class="hint">· 论文所属研究方向</span></label>
-      <select id="profile-discipline">
-        <option value="">不限/不确定</option>
-        <optgroup label="艺术学">
-          <option value="艺术学-艺术理论">艺术学-艺术理论</option>
-          <option value="艺术学-美术史论">艺术学-美术史论</option>
-          <option value="艺术学-绘画研究">艺术学-绘画研究（中国画/油画/版画）</option>
-          <option value="艺术学-书法篆刻">艺术学-书法篆刻</option>
-          <option value="艺术学-雕塑与公共艺术">艺术学-雕塑与公共艺术</option>
-          <option value="艺术学-民间美术">艺术学-民间美术</option>
-          <option value="艺术学-当代艺术与批评">艺术学-当代艺术与批评</option>
-          <option value="艺术学-艺术管理">艺术学-艺术管理</option>
-        </optgroup>
-        <optgroup label="设计学">
-          <option value="设计学-视觉传达">设计学-视觉传达设计</option>
-          <option value="设计学-环境设计">设计学-环境设计</option>
-          <option value="设计学-产品与工业设计">设计学-产品与工业设计</option>
-          <option value="设计学-服装服饰设计">设计学-服装与服饰设计</option>
-          <option value="设计学-工艺美术">设计学-工艺美术</option>
-          <option value="设计学-数字媒体艺术">设计学-数字媒体艺术</option>
-        </optgroup>
-        <optgroup label="非遗学">
-          <option value="非遗学-传统技艺">非遗学-传统技艺与工艺</option>
-          <option value="非遗学-传统美术">非遗学-传统美术</option>
-          <option value="非遗学-民俗文化">非遗学-民俗文化</option>
-          <option value="非遗学-保护与管理">非遗学-非遗保护与管理</option>
-        </optgroup>
-        <optgroup label="美学与文艺学">
-          <option value="美学-美学理论">美学-美学理论</option>
-          <option value="美学-艺术哲学">美学-艺术哲学</option>
-          <option value="文艺学-文艺理论">文艺学-文艺理论</option>
-          <option value="文艺学-文艺批评">文艺学-文艺批评</option>
-        </optgroup>
-        <optgroup label="文化遗产与文博">
-          <option value="文化遗产-文物保护">文化遗产-文物保护</option>
-          <option value="文化遗产-博物馆策展">文化遗产-博物馆与策展</option>
-          <option value="文化遗产-非遗展示">文化遗产-非遗展示</option>
-        </optgroup>
-        <optgroup label="民族艺术">
-          <option value="民族艺术-少数民族艺术">民族艺术-少数民族艺术</option>
-          <option value="民族艺术-民间工艺">民族艺术-民间工艺</option>
-        </optgroup>
-        <optgroup label="文化产业">
-          <option value="文化产业-文化经济">文化产业-文化经济与政策</option>
-          <option value="文化产业-文创开发">文化产业-文创与IP开发</option>
-        </optgroup>
-        <optgroup label="艺术教育">
-          <option value="艺术教育-美育">艺术教育-美育研究</option>
-          <option value="艺术教育-设计教育">艺术教育-设计教育</option>
-          <option value="艺术教育-非遗教育">艺术教育-非遗传承教育</option>
-        </optgroup>
-        <optgroup label="戏剧与影视">
-          <option value="戏剧学-戏剧戏曲">戏剧学-戏剧戏曲研究</option>
-          <option value="影视学-影像艺术">影视学-影像艺术研究</option>
-        </optgroup>
-      </select>
-    </div>
-    <div class="form-group" id="supervisor-group">
-      <label id="supervisor-label">导师挂名支持 <span class="hint" id="supervisor-hint">· 导师是否愿意通讯/一作</span></label>
-      <select id="profile-supervisor">
-        <option value="">未确定</option>
-        <option value="yes" class="sup-student">有导师支持（通讯/一作）</option>
-        <option value="yes" class="sup-teacher" style="display:none;">有教授/前辈合作支持</option>
-        <option value="maybe" class="sup-student">导师可挂名但不一定</option>
-        <option value="maybe" class="sup-teacher" style="display:none;">有合作意向但未确定</option>
-        <option value="no">独作/无导师支持</option>
       </select>
     </div>
   </div>
@@ -644,19 +597,19 @@ footer {
 
     <!-- 冲刺 -->
     <div id="tier-reach-section" style="display:none;">
-      <h4 style="color:#c62828;font-size:0.95rem;margin-bottom:8px;">冲刺 — 高影响力期刊，挑战较大</h4>
+      <h4 style="color:#c62828;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#ffebee,#fff);border-left:4px solid #c62828;border-radius:4px;">🎯 冲刺 — 高影响力期刊，挑战较大</h4>
       <div id="tier-reach"></div>
     </div>
 
     <!-- 匹配 -->
     <div id="tier-match-section" style="display:none;">
-      <h4 style="color:#1565c0;font-size:0.95rem;margin-bottom:8px;">匹配 — 方向对口，成功率较高</h4>
+      <h4 style="color:#1565c0;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#fff);border-left:4px solid #1565c0;border-radius:4px;">📌 匹配 — 方向对口，成功率较高</h4>
       <div id="tier-match"></div>
     </div>
 
     <!-- 保底 -->
     <div id="tier-safe-section" style="display:none;">
-      <h4 style="color:#2e7d32;font-size:0.95rem;margin-bottom:8px;">保底 — 录用率高，稳妥之选</h4>
+      <h4 style="color:#2e7d32;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#e8f5e9,#fff);border-left:4px solid #2e7d32;border-radius:4px;">🛡️ 保底 — 录用率高，稳妥之选</h4>
       <div id="tier-safe"></div>
     </div>
 
@@ -1103,14 +1056,16 @@ function authorMeetsRequirement(userIdentity, requirement) {
   }
 
   // 从描述中推断最低要求
-  if (req.includes('教授') && !req.includes('副教授')) {
+  // 先剥离"优先/倾向/建议/更欢迎"等软偏好从句，避免把偏好当硬门槛
+  const hardReq = req.replace(/[；;]?\s*[^；;]*?(?:优先|倾向|更欢迎|建议)[^；;]*/g, '');
+  if (hardReq.includes('教授') && !hardReq.includes('副教授')) {
     return { meets: userLevel >= LEVELS.indexOf('教授'), minLevel: '教授' };
   }
-  if (req.includes('副教授')) {
-    if (req.includes('导师通讯') || req.includes('挂名')) return { meets: true, minLevel: '博士（可挂名）' };
+  if (hardReq.includes('副教授')) {
+    if (hardReq.includes('导师通讯') || hardReq.includes('挂名')) return { meets: true, minLevel: '博士（可挂名）' };
     return { meets: userLevel >= LEVELS.indexOf('副教授'), minLevel: '副教授' };
   }
-  if (req.includes('博士')) {
+  if (hardReq.includes('博士')) {
     // 博士可独作，但检查是否有硕士可投的例外
     if (req.includes('硕士') && (req.includes('导师') || req.includes('通讯'))) {
       return { meets: userLevel >= LEVELS.indexOf('硕士'), minLevel: '硕士+导师通讯' };
@@ -1136,57 +1091,253 @@ function authorMeetsRequirement(userIdentity, requirement) {
   return { meets: userLevel >= LEVELS.indexOf('硕士'), minLevel: '硕士（保守估计）' };
 }
 
-// ==================== 语义关联词典 ====================
-// 人文艺术领域同义/近义/关联词扩展，用于跨表述匹配
+// ==================== 语义关联词典 v2 ====================
+// 设计原则：
+// 1) exact: 强同义/近义，可进入 domainBoost / reviewTopicBoost
+// 2) weak: 上位词、方法词、理论词，只建议低权重使用，不直接制造强匹配
+// 3) 不做 synonym -> key 的无限反向扩展，避免"审美→审美教育"式链式污染
+
 const SEMANTIC_MAP = {
-  '非遗': ['非物质文化遗产', '无形文化遗产', '人类非遗', '非遗保护', '非遗传承', '非遗教育', '传统技艺', '传统美术', '民俗', '传承人'],
-  '非物质文化遗产': ['非遗', '无形文化遗产', '活态传承', '传统技艺', '传统美术', '民俗活动', '非遗保护', '非遗活化', '非遗传承', '非遗教育', '传承人', '口述传统', '民间艺术'],
-  '传统工艺': ['传统技艺', '传统手工艺', '手工技艺', '工艺美术', '民间工艺', '老手艺', '手作'],
-  '民间艺术': ['民间美术', '民俗艺术', '乡土艺术', '农民画', '剪纸', '年画', '皮影', '泥塑', '面塑', '民间工艺', '非遗', '非遗保护', '传统美术', '非物质文化遗产', '民俗', '民间手工艺'],
-  '民间': ['民间艺术', '民间文化', '民俗', '乡土', '民众', '底层', '草根', '非物质文化遗产'],
-  '美学': ['审美', '美感', '审美文化', '艺术哲学', '文艺美学', '审美经验', '审美趣味', '崇高', '优美'],
-  '文创': ['文化创意', '文创产品', '文创设计', 'IP衍生', '文化IP', '创意产业', '文创开发'],
-  '设计': ['艺术设计', '视觉设计', '工业设计', '环境设计', '产品设计', '服装设计', '平面设计', '交互设计'],
-  '美术': ['绘画', '造型艺术', '视觉艺术', '中国画', '油画', '版画', '雕塑', '水彩', '素描'],
-  '文化遗产': ['遗产保护', '文物', '文保', '古建筑', '遗址', '文化古迹', '世界遗产', '文化记忆'],
-  '民俗': ['民间风俗', '风土人情', '岁时节日', '庙会', '婚丧', '饮食习俗', '节庆', '民间信仰'],
-  '书法': ['书道', '笔墨', '碑学', '帖学', '行书', '楷书', '草书', '隶书', '篆书', '金石'],
-  '艺术教育': ['美育', '美术教育', '设计教育', '艺术素养', '审美教育', '非遗教育', '手工教育'],
-  '公共艺术': ['城市雕塑', '公共空间艺术', '社区艺术', '大地艺术', '艺术介入', '艺术乡建'],
-  '数字艺术': ['新媒体艺术', '数字媒体', '交互艺术', '虚拟现实艺术', '生成艺术', 'AI艺术', '影像艺术'],
-  '文化产业': ['文创产业', '文化经济', '创意经济', '内容产业', '文旅融合', '文化消费', '文化IP'],
-  '民族艺术': ['少数民族艺术', '民族民间艺术', '原生态艺术', '民族手工艺', '民族图案'],
-  '田野调查': ['田野工作', '实地考察', '参与观察', '民族志', '口述史', '深度访谈'],
-  '策展': ['展览策划', '陈列设计', '博物馆展示', '艺术展览', '双年展', '文献展'],
-  '传统美术': ['中国画', '书法', '篆刻', '年画', '剪纸', '刺绣', '陶瓷', '漆艺'],
-  '服饰': ['服装', '纺织', '染织', '刺绣', '民族服饰', '时装', '汉服', '首饰'],
-  // 学术→通俗映射（帮助精细学术概念匹配到粗粒度领域分类）
-  '农民画': ['民间绘画', '乡土绘画', '现代民间绘画', '博里农民画', '户县农民画', '金山农民画'],
-  '民间绘画': ['农民画', '乡土绘画', '现代民间绘画'],
-  '人民性': ['民间', '民众', '平民', '大众文化', '民间艺术', '底层视角'],
-  '文化主体性': ['文化认同', '文化自觉', '主体意识', '身份认同', '文化主体'],
-  '视觉文化': ['视觉研究', '视觉自觉', '视觉意识', '观看方式', '视觉性', '图像研究'],
-  '视觉': ['视觉文化', '视觉艺术', '视觉研究', '图像', '观看'],
-  '民间生成': ['民间', '自发生成', '民间自发', '乡土生成'],
-  '文化记忆': ['集体记忆', '社会记忆', '历史记忆', '记忆传承'],
-  '乡土': ['乡村', '乡土文化', '本土', '地方性', '地域文化'],
-  '地方性': ['本土性', '地域性', '在地性', '场所精神', '地方知识'],
-  '身份认同': ['文化认同', '族群认同', '自我认同', '认同建构'],
-  '图像': ['视觉图像', '图像学', '图像分析', '图像叙事', '图式'],
+  // ---------- 非遗 / 民俗 / 民间工艺 ----------
+  '非遗': {
+    exact: ['非物质文化遗产', '无形文化遗产', '非遗保护', '非遗传承', '非遗活化', '活态传承'],
+    weak: ['传统技艺', '传统工艺', '民间工艺', '传承人', '口述传统']
+  },
+  '非物质文化遗产': {
+    exact: ['非遗', '无形文化遗产', '非遗保护', '非遗传承', '非遗活化', '活态传承'],
+    weak: ['传统技艺', '传统工艺', '民间工艺', '传承人', '口述传统']
+  },
+  '传统工艺': {
+    exact: ['传统技艺', '传统手工艺', '手工技艺', '民间工艺', '工艺美术'],
+    weak: ['非遗', '手作', '老手艺']
+  },
+  '民俗': {
+    exact: ['民间风俗', '民俗文化', '民俗活动', '岁时节日', '节庆民俗', '民间信仰'],
+    weak: ['庙会', '婚丧礼俗', '饮食习俗', '风土人情']
+  },
+
+  // ---------- 民间艺术 / 民间美术 ----------
+  '民间艺术': {
+    exact: ['民间美术', '民俗艺术', '乡土艺术', '民间工艺', '民间手工艺'],
+    weak: ['剪纸', '年画', '皮影', '泥塑', '面塑', '农民画', '非遗']
+  },
+  '民间美术': {
+    exact: ['民间艺术', '民俗艺术', '乡土美术', '民间绘画'],
+    weak: ['剪纸', '年画', '皮影', '泥塑', '面塑', '农民画']
+  },
+  '农民画': {
+    exact: ['民间绘画', '乡土绘画', '现代民间绘画', '户县农民画', '金山农民画', '博里农民画'],
+    weak: ['民间美术', '乡土艺术']
+  },
+  '民间绘画': {
+    exact: ['农民画', '乡土绘画', '现代民间绘画'],
+    weak: ['民间美术']
+  },
+  '民间': {
+    exact: ['民间文化'],
+    weak: ['民众', '乡土', '地方社会']
+  },
+
+  // ---------- 美术 ----------
+  '美术': {
+    exact: ['造型艺术', '视觉艺术', '绘画艺术'],
+    weak: ['中国画', '油画', '版画', '雕塑', '水彩', '素描', '美术史', '美术理论']
+  },
+  '绘画': {
+    exact: ['绘画艺术', '图绘', '画作'],
+    weak: ['中国画', '油画', '版画', '水彩', '壁画']
+  },
+  '中国画': {
+    exact: ['国画', '水墨画', '中国水墨', '写意画', '工笔画'],
+    weak: ['山水画', '花鸟画', '人物画', '笔墨']
+  },
+  '美术史': {
+    exact: ['艺术史', '中国美术史', '美术史研究'],
+    weak: ['图像学', '风格史', '艺术史论']
+  },
+  '传统美术': {
+    exact: ['传统绘画', '民间美术', '传统造型艺术'],
+    weak: ['中国画', '书法', '篆刻', '年画', '剪纸', '陶瓷', '漆艺']
+  },
+
+  // ---------- 书法 / 篆刻 ----------
+  '书法': {
+    exact: ['书法艺术', '书道', '笔墨', '书法创作', '书法史'],
+    weak: ['碑学', '帖学', '行书', '楷书', '草书', '隶书', '篆书', '金石']
+  },
+  '篆书': {
+    exact: ['小篆', '大篆', '秦篆', '篆体', '篆书艺术'],
+    weak: ['金文', '石鼓文', '篆刻', '金石']
+  },
+  '篆刻': {
+    exact: ['印章', '印学', '治印', '金石篆刻'],
+    weak: ['金石', '篆书', '碑学']
+  },
+  '碑学': {
+    exact: ['碑派', '碑刻', '碑帖', '金石碑版'],
+    weak: ['书法史', '帖学', '金石学']
+  },
+
+  // ---------- 设计 ----------
+  '设计': {
+    exact: ['艺术设计', '设计艺术', '设计学'],
+    weak: ['视觉传达设计', '环境设计', '产品设计', '工业设计', '服装设计', '数字媒体设计']
+  },
+  '视觉传达': {
+    exact: ['视觉传达设计', '平面设计', '视觉设计'],
+    weak: ['品牌设计', '包装设计', '字体设计', '海报设计']
+  },
+  '环境设计': {
+    exact: ['环境艺术设计', '环艺设计', '空间设计'],
+    weak: ['室内设计', '景观设计', '公共空间设计']
+  },
+  '产品设计': {
+    exact: ['工业产品设计', '器物设计', '文创产品设计'],
+    weak: ['用户体验', '交互设计', '服务设计']
+  },
+  '文创': {
+    exact: ['文化创意', '文创产品', '文创设计', '文化创意产品'],
+    weak: ['文化IP', 'IP衍生', '创意产业', '文旅融合']
+  },
+
+  // ---------- 民族艺术 ----------
+  '民族艺术': {
+    exact: ['少数民族艺术', '民族民间艺术', '民族美术', '民族工艺'],
+    weak: ['民族图案', '民族纹样', '原生态艺术', '民族文化']
+  },
+  '民族图案': {
+    exact: ['民族纹样', '少数民族纹样', '民族装饰图案'],
+    weak: ['纹饰', '服饰图案', '工艺图案']
+  },
+  '服饰': {
+    exact: ['服装', '服饰文化', '服饰艺术', '民族服饰'],
+    weak: ['纺织', '染织', '刺绣', '首饰']
+  },
+  '刺绣': {
+    exact: ['绣艺', '刺绣工艺', '民间刺绣', '民族刺绣'],
+    weak: ['染织', '服饰', '非遗']
+  },
+
+  // ---------- 公共艺术 / 数字艺术 ----------
+  '公共艺术': {
+    exact: ['公共空间艺术', '城市公共艺术', '城市雕塑'],
+    weak: ['社区艺术', '艺术介入', '艺术乡建', '大地艺术']
+  },
+  '数字艺术': {
+    exact: ['新媒体艺术', '数字媒体艺术', '媒体艺术', '交互艺术'],
+    weak: ['虚拟现实艺术', '生成艺术', 'AI艺术', '影像艺术']
+  },
+
+  // ---------- 艺术教育 / 策展 / 田野 ----------
+  '艺术教育': {
+    exact: ['美术教育', '艺术教学', '美育', '审美教育'],
+    weak: ['艺术素养', '非遗教育', '手工教育']
+  },
+  '策展': {
+    exact: ['展览策划', '策展实践', '策展研究'],
+    weak: ['陈列设计', '博物馆展示', '艺术展览', '双年展', '文献展']
+  },
+  '田野调查': {
+    exact: ['田野工作', '实地考察', '田野考察', '参与观察'],
+    weak: ['民族志', '口述史', '深度访谈']
+  },
+
+  // ---------- 理论框架：只给弱扩展，避免污染领域 ----------
+  '美学': {
+    exact: ['艺术哲学', '文艺美学', '审美经验', '审美趣味'],
+    weak: ['审美', '美感', '崇高', '优美']
+  },
+  '审美': {
+    exact: ['审美经验', '审美趣味', '审美意识'],
+    weak: ['美感', '美学']
+  },
+  '视觉文化': {
+    exact: ['视觉研究', '视觉性', '观看方式', '图像研究'],
+    weak: ['视觉自觉', '观看机制']
+  },
+  '视觉': {
+    exact: [],
+    weak: ['视觉艺术', '视觉文化', '图像']
+  },
+  '图像': {
+    exact: ['图像研究', '图像学'],
+    weak: ['图像分析', '图像叙事', '图式', '视觉图像']
+  },
+  '文化遗产': {
+    exact: ['遗产保护', '文化遗产保护', '文物保护'],
+    weak: ['文物', '古建筑', '遗址', '世界遗产', '文化记忆']
+  },
+  '文化主体性': {
+    exact: ['文化主体', '主体意识', '文化自觉'],
+    weak: ['文化认同', '身份认同']
+  },
+  '身份认同': {
+    exact: ['认同建构', '文化认同', '族群认同'],
+    weak: ['自我认同', '身份建构']
+  },
+  '文化记忆': {
+    exact: ['集体记忆', '社会记忆', '历史记忆'],
+    weak: ['记忆传承', '地方记忆']
+  },
+  '乡土': {
+    exact: ['乡村', '乡土文化', '地方性'],
+    weak: ['本土', '地域文化', '在地性']
+  },
+  '地方性': {
+    exact: ['地域性', '在地性', '地方知识'],
+    weak: ['本土性', '场所精神', '乡土']
+  },
+  '人民性': {
+    exact: ['人民文艺', '人民立场'],
+    weak: ['民众', '大众文化', '底层视角']
+  }
 };
 
-// 展开用户输入的同义词（单轮，通过完整语义链覆盖多跳）
-function expandWithSynonyms(text) {
+// 展开用户输入的同义词
+// options.includeWeak: 是否包含 weak 扩展（domainBoost 用 false，reviewTopicBoost 用 true）
+// options.reverseStrong: exact synonym 命中时是否回填 key（默认 true）
+function expandWithSynonyms(text, options = {}) {
+  const { includeWeak = false, reverseStrong = true } = options;
   const expanded = new Set();
-  const lower = text.toLowerCase();
-  for (const [key, synonyms] of Object.entries(SEMANTIC_MAP)) {
-    if (lower.includes(key.toLowerCase())) { expanded.add(key); for (const s of synonyms) expanded.add(s); }
-    for (const s of synonyms) { if (lower.includes(s.toLowerCase())) { expanded.add(key); expanded.add(s); } }
+  const lower = String(text || '').toLowerCase();
+
+  for (const [key, groups] of Object.entries(SEMANTIC_MAP)) {
+    const exact = Array.isArray(groups) ? groups : (groups.exact || []);
+    const weak = Array.isArray(groups) ? [] : (groups.weak || []);
+    const keyLower = key.toLowerCase();
+
+    // 1. key 命中：加入 key + exact；weak 可选
+    if (lower.includes(keyLower)) {
+      expanded.add(key);
+      exact.forEach(s => expanded.add(s));
+      if (includeWeak) weak.forEach(s => expanded.add(s));
+      continue;
+    }
+
+    // 2. exact synonym 命中：只回填 key + 命中的 synonym，不扩全组
+    if (reverseStrong) {
+      for (const s of exact) {
+        if (lower.includes(String(s).toLowerCase())) {
+          expanded.add(key);
+          expanded.add(s);
+        }
+      }
+    }
+
+    // 3. weak synonym 命中：只保留自身，不回填 key
+    if (includeWeak) {
+      for (const s of weak) {
+        if (lower.includes(String(s).toLowerCase())) {
+          expanded.add(s);
+        }
+      }
+    }
   }
+
   return [...expanded].join(' ');
 }
 
-// 分词
+// 分词// 分词
 function tokenize(text) {
   if (!text) return [];
   return text
@@ -1234,187 +1385,401 @@ function computeDomainMatch(paperText, journal, discipline) {
 
 // 改进的匹配分数计算
 function computeMatchScore(paperText, paperKeywords, journal, discipline) {
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const toLower = (s) => String(s || '').toLowerCase();
+  const uniqKey = (s) => toLower(s).trim();
+
   const kwText = paperKeywords || '';
   const mainText = paperText || '';
 
-  // 标题权重 > 摘要权重：标题词权重2x（标题定义核心主题）
-  const titleText = ($('paper-title')?.value || '').toLowerCase();
-  const abstractText = mainText.replace(titleText, '').toLowerCase();
+  let titleText = '';
+  try {
+    titleText = toLower(typeof $ === 'function' ? ($('paper-title')?.value || '') : '');
+  } catch (e) {
+    titleText = '';
+  }
 
-  // 语义扩展（两轮）
-  const expandedRaw = (mainText + ' ' + kwText).toLowerCase();
-  const expandedText = (expandedRaw + ' ' + expandWithSynonyms(expandedRaw)).toLowerCase();
-  const allText = (mainText + ' ' + kwText).toLowerCase();
-  const tokens = new Set(tokenize(expandedText));
+  const allText = toLower(mainText + ' ' + kwText);
+  const userKwText = toLower(kwText);
+  const tokens = new Set(tokenize(allText));
+  const titleTokens = new Set(tokenize(titleText));
+  const userKwTokens = new Set(tokenize(userKwText));
 
-  let matchCount = 0;
-  let totalWeight = 0;
-  const matchedKeywords = [];
-  const unmatchedKeywords = [];
+  const journalKeywords = Array.isArray(journal.keywords) ? journal.keywords.filter(Boolean) : [];
+  const journalDomains = Array.isArray(journal.domains) ? journal.domains.filter(Boolean) : [];
+  const journalColumns = Array.isArray(journal.columns) ? journal.columns.filter(Boolean) : [];
 
-  for (const kw of journal.keywords) {
-    const kwLower = kw.toLowerCase();
-    // 基础权重：按长度
-    let weight = kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1;
+  const STOP2 = new Set([
+    '艺术','设计','研究','文化','美术','教育','分析','理论','创作','发展','比较','策略','实践',
+    '视角','路径','方法','体系','建构','重构','融合','传承','创新','转型','演变','转向',
+    '问题','价值','意义','表达','形态','叙事','历史','当代','传统','现代','审美','视觉'
+  ]);
 
-    let matched = false;
+  const GENERIC_TERMS = new Set([
+    '艺术','文化','设计','美术','研究','教育','理论','实践','传统','现代','当代','视觉','审美',
+    '图像','创作','发展','创新','传承'
+  ]);
 
-    // 精确子串匹配（在扩展文本中）
-    if (expandedText.includes(kwLower)) {
-      matched = true;
+  const pushUnique = (arr, seen, value) => {
+    const k = uniqKey(value);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    arr.push(value);
+  };
+
+  const termWeight = (term) => {
+    const t = String(term || '').trim();
+    const len = t.length;
+    let w = len >= 6 ? 3.4 : len >= 4 ? 2.5 : len >= 3 ? 1.7 : 1.0;
+
+    if (GENERIC_TERMS.has(t)) w *= 0.35;
+    else if (/^(艺术|文化|美术|设计|教育|研究)/.test(t) && len <= 4) w *= 0.65;
+
+    return w;
+  };
+
+  const matchTerm = (term, text, tokenSet, opts = {}) => {
+    const allowFuzzy = opts.allowFuzzy !== false;
+    const t = toLower(term).trim();
+    if (!t || !text) return { matched: false, strength: 0, type: 'none' };
+
+    if (text.includes(t)) {
+      return { matched: true, strength: 1, type: 'exact' };
     }
-    // 子串滑动窗口：3-4字（2字如\"艺术\"太泛→西藏艺术误匹配济南泥塑）
-    if (!matched && kwLower.length >= 3) {
-      for (let len = 3; len <= Math.min(4, kwLower.length); len++) {
-        for (let i = 0; i <= kwLower.length - len; i++) {
-          if (expandedText.includes(kwLower.substring(i, i + len))) { matched = true; break; }
-        }
-        if (matched) break;
-      }
-    }
-    // Token 级别匹配
-    if (!matched) {
-      for (const t of tokens) {
-        if (t.includes(kwLower) || kwLower.includes(t)) { matched = true; break; }
-      }
-    }
-    // 原文直搜
-    if (!matched && allText.includes(kwLower)) { matched = true; }
 
-    if (matched) {
-      // 用户关键词直接命中 → 3倍
-      if (kwText && kwText.toLowerCase().includes(kwLower)) {
-        weight *= 3;
-      }
-      // 标题命中 → 2倍（标题定义核心主题）
-      else if (titleText && (titleText.includes(kwLower) || kwLower.includes(titleText.substring(0, Math.min(20, titleText.length))))) {
-        weight *= 2;
-        // 检查子串匹配
-        if (weight === kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1) {
-          for (let len = 3; len <= Math.min(4, kwLower.length); len++) {
-            for (let i = 0; i <= kwLower.length - len; i++) {
-              if (titleText.includes(kwLower.substring(i, i + len))) { weight = (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1) * 2; break; }
-            }
-            if (weight > (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1)) break;
+    if (!allowFuzzy) return { matched: false, strength: 0, type: 'none' };
+
+    if (t.length >= 3) {
+      for (let len = Math.min(4, t.length); len >= 3; len--) {
+        for (let i = 0; i <= t.length - len; i++) {
+          const sub = t.substring(i, i + len);
+          if (text.includes(sub)) {
+            const strength = t.length <= 4 ? 0.82 : (len === 4 ? 0.68 : 0.55);
+            return { matched: true, strength, type: 'substring' };
           }
         }
       }
-      // 模糊匹配用户关键词 → 2倍
-      else if (kwText && kwLower.length >= 2) {
-        const kwTokens = tokenize(kwText.toLowerCase());
-        for (const kt of kwTokens) {
-          if (kt.includes(kwLower) || kwLower.includes(kt)) { weight *= 2; break; }
+    }
+
+    if (t.length >= 4) {
+      for (let i = 0; i <= t.length - 2; i++) {
+        const sub2 = t.substring(i, i + 2);
+        if (!STOP2.has(sub2) && text.includes(sub2)) {
+          return { matched: true, strength: 0.38, type: 'substring2' };
         }
       }
+    }
 
-      matchCount += weight;
-      matchedKeywords.push(kw);
+    if (tokenSet && tokenSet.size > 0) {
+      for (const tok of tokenSet) {
+        const tk = toLower(tok).trim();
+        if (!tk || tk.length < 2) continue;
+        if (tk.includes(t)) return { matched: true, strength: 0.72, type: 'token' };
+        if (t.includes(tk) && tk.length >= 3 && !GENERIC_TERMS.has(tk)) {
+          return { matched: true, strength: 0.52, type: 'tokenReverse' };
+        }
+      }
+    }
+
+    return { matched: false, strength: 0, type: 'none' };
+  };
+
+  // ==================== 模块一：关键词覆盖率 0-40 ====================
+  let coveredWeight = 0;
+  let totalWeight = 0;
+  const matchedKeywords = [];
+  const unmatchedKeywords = [];
+  const matchedSeen = new Set();
+
+  const keywordHitInfo = [];
+
+  for (const kw of journalKeywords) {
+    const kwLower = toLower(kw).trim();
+    if (!kwLower) continue;
+
+    const baseW = termWeight(kw);
+    const hit = matchTerm(kwLower, allText, tokens);
+    totalWeight += baseW;
+
+    if (hit.matched) {
+      coveredWeight += baseW * hit.strength;
+      pushUnique(matchedKeywords, matchedSeen, kw);
+      keywordHitInfo.push({ keyword: kw, weight: baseW, strength: hit.strength, type: hit.type });
     } else {
       unmatchedKeywords.push(kw);
     }
-    totalWeight += (kw.length >= 5 ? 3 : kw.length >= 3 ? 2 : 1); // use base weight for total
   }
 
-  // 用户关键词 → 期刊关键词反向匹配：用户的每个关键词也在期刊关键词中搜索
-  let userKwBoost = 0;
-  if (kwText) {
-    const userTokens = tokenize(kwText.toLowerCase());
-    for (const ut of userTokens) {
-      if (ut.length < 2) continue;
-      for (const jk of journal.keywords) {
-        const jkl = jk.toLowerCase();
-        if (jkl.includes(ut) || ut.includes(jkl)) { userKwBoost += 1.5; break; }
+  const coverageRatio = totalWeight > 0 ? clamp(coveredWeight / totalWeight, 0, 1) : 0;
+  const coverageScore = coverageRatio * 40;
+
+  // ==================== 模块二：精度加成 0-20 ====================
+  let titlePrecision = 0;
+  let userKwPrecision = 0;
+  let cnkiPrecision = 0;
+
+  for (const info of keywordHitInfo) {
+    const kw = info.keyword;
+    const kwW = clamp(info.weight, 0.8, 3.4);
+
+    const titleHit = matchTerm(kw, titleText, titleTokens, { allowFuzzy: true });
+    if (titleHit.matched && titleHit.strength >= 0.52) {
+      titlePrecision += 1.15 * kwW * titleHit.strength;
+    }
+
+    const userKwHit = matchTerm(kw, userKwText, userKwTokens, { allowFuzzy: true });
+    if (userKwHit.matched && userKwHit.strength >= 0.52) {
+      userKwPrecision += 1.25 * kwW * userKwHit.strength;
+    }
+  }
+
+  titlePrecision = clamp(titlePrecision, 0, 6);
+  userKwPrecision = clamp(userKwPrecision, 0, 6);
+
+  const artsForMatch = Array.isArray(journal.cnkiArticles) ? journal.cnkiArticles : [];
+  if (artsForMatch.length >= 3) {
+    const realKw = [...new Set(
+      artsForMatch.flatMap(a =>
+        String(a.keywords || '')
+          .split(';')
+          .map(k => k.trim())
+          .filter(k => k.length >= 2 && !GENERIC_TERMS.has(k))
+      )
+    )];
+
+    for (const kw of realKw) {
+      const kwLower = toLower(kw);
+      if (!kwLower) continue;
+
+      const exactHit = allText.includes(kwLower);
+      if (exactHit) {
+        cnkiPrecision += titleText.includes(kwLower) || userKwText.includes(kwLower) ? 2.4 : 1.8;
+        pushUnique(matchedKeywords, matchedSeen, kw);
+        continue;
+      }
+
+      const fuzzyHit = matchTerm(kwLower, allText, tokens, { allowFuzzy: true });
+      if (fuzzyHit.matched && fuzzyHit.strength >= 0.55) {
+        cnkiPrecision += fuzzyHit.strength >= 0.68 ? 1.1 : 0.7;
+        pushUnique(matchedKeywords, matchedSeen, kw);
       }
     }
-    userKwBoost = Math.round(Math.min(12, userKwBoost));
   }
 
-  // 栏目匹配加成（真实栏目数据 → 评分）
+  cnkiPrecision = clamp(cnkiPrecision, 0, 8);
+  const precisionScore = clamp(titlePrecision + userKwPrecision + cnkiPrecision, 0, 20);
+  const userKwBoost = Math.round(userKwPrecision);
+
+  // ==================== 模块三：期刊适配 0-40 ====================
+  const expandedRaw = allText;
+  let strongSynonyms = '';
+  let weakSynonyms = '';
+
+  try {
+    strongSynonyms = expandWithSynonyms(expandedRaw, { includeWeak: false, reverseStrong: true });
+    weakSynonyms = expandWithSynonyms(expandedRaw, { includeWeak: true, reverseStrong: true });
+  } catch (e) {
+    try {
+      strongSynonyms = expandWithSynonyms(expandedRaw) || '';
+      weakSynonyms = strongSynonyms;
+    } catch (e2) {
+      strongSynonyms = '';
+      weakSynonyms = '';
+    }
+  }
+
+  const expandedStrongText = toLower(expandedRaw + ' ' + strongSynonyms);
+  const expandedWeakText = toLower(expandedRaw + ' ' + weakSynonyms);
+
+  const safeJournal = {
+    ...journal,
+    keywords: journalKeywords,
+    domains: journalDomains,
+    columns: journalColumns
+  };
+
+  let domainPart = 0;
+  if (journalDomains.length > 0) {
+    domainPart = clamp(computeDomainMatch(expandedStrongText, safeJournal, discipline) * 14, 0, 14);
+  }
+
+  let reviewTopicBoost = 0;
+  const preferredTopics = journal.preferredTopics || '';
+  const rtMatch = String(preferredTopics).match(/【网友投稿主题[：:]\s*([^】]+)】/);
+  if (rtMatch) {
+    const reviewTopics = rtMatch[1]
+      .split(/[、，,]/)
+      .map(t => t.replace(/\(\d+次\)/, '').trim())
+      .filter(t => t.length >= 2);
+
+    if (reviewTopics.length > 0) {
+      let topicHits = 0;
+      for (const rt of reviewTopics) {
+        const rtLower = toLower(rt);
+        if (allText.includes(rtLower)) topicHits += 1;
+        else if (expandedStrongText.includes(rtLower)) topicHits += 0.7;
+        else if (expandedWeakText.includes(rtLower)) topicHits += 0.45;
+        else {
+          const rtTokens = tokenize(rtLower);
+          for (const t of rtTokens) {
+            if (t.length >= 2 && !GENERIC_TERMS.has(t) && expandedWeakText.includes(t)) {
+              topicHits += 0.25;
+              break;
+            }
+          }
+        }
+      }
+      reviewTopicBoost = clamp((topicHits / reviewTopics.length) * 4, 0, 4);
+    }
+  }
+
   let columnBoost = 0;
-  const columns = journal.columns || [];
-  if (columns.length > 0) {
+  if (journalColumns.length > 0) {
     let colHits = 0;
-    for (const col of columns) {
-      const colLower = col.toLowerCase();
-      if (expandedText.includes(colLower)) { colHits++; }
-      else {
-        for (let len = 3; len <= Math.min(4, colLower.length); len++) {
-          let found = false;
+    for (const col of journalColumns) {
+      const colLower = toLower(col);
+      if (!colLower) continue;
+
+      if (allText.includes(colLower)) {
+        colHits += 1;
+      } else if (colLower.length >= 6) {
+        const minLen = Math.max(4, Math.ceil(colLower.length / 2));
+        let found = false;
+        for (let len = colLower.length; len >= minLen; len--) {
           for (let i = 0; i <= colLower.length - len; i++) {
-            if (expandedText.includes(colLower.substring(i, i + len))) { colHits += 0.5; found = true; break; }
+            const sub = colLower.substring(i, i + len);
+            if (allText.includes(sub)) {
+              colHits += len / colLower.length >= 0.75 ? 0.8 : 0.55;
+              found = true;
+              break;
+            }
           }
           if (found) break;
         }
       }
     }
-    columnBoost = Math.round(Math.min(15, colHits / Math.max(1, columns.length) * 15));
+    const colDenominator = Math.max(1, Math.min(4, journalColumns.length));
+    columnBoost = clamp((colHits / colDenominator) * 7, 0, 7);
   }
 
-  // 领域匹配加成（使用扩展文本！）
-  let domainBoost = computeDomainMatch(expandedText, journal, discipline) * 20;
+  const profile = (typeof window !== 'undefined' && window.currentProfile) ? window.currentProfile : {};
+  let identityFit = 4;
 
-  // 万维书刊网 review topics 加成（最多 +15%）
-  let reviewTopicBoost = 0;
-  const preferredTopics = journal.preferredTopics || '';
-  const rtMatch = preferredTopics.match(/【网友投稿主题[：:]\s*([^】]+)】/);
-  if (rtMatch) {
-    const reviewTopics = rtMatch[1].split(/[、，,]/).map(t => t.replace(/\(\d+次\)/, '').trim()).filter(t => t.length >= 2);
-    const expandedTextLower = expandedText;
-    let topicHits = 0;
-    for (const rt of reviewTopics) {
-      if (expandedTextLower.includes(rt.toLowerCase())) {
-        topicHits++;
-      } else {
-        // Fuzzy: check individual chars in the topic
-        for (const t of tokenize(rt.toLowerCase())) {
-          if (t.length >= 2 && expandedTextLower.includes(t)) { topicHits += 0.5; break; }
-        }
-      }
+  const ad = journal.authorDistribution;
+  if (ad && ad.degrees && ad.sampleSize >= 2 && profile.identity) {
+    const deg = ad.degrees || {};
+    const total = Object.values(deg).reduce((a, b) => a + b, 0) || 1;
+    const masterCount = (deg['硕士'] || 0) + (deg['在读硕士'] || 0);
+    const phdCount = (deg['博士'] || 0) + (deg['在读博士'] || 0) + (deg['博士后'] || 0);
+    const masterPct = masterCount / total * 100;
+    const phdPct = phdCount / total * 100;
+    const id = profile.identity;
+
+    if (id === '硕士生') {
+      const hasSup = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
+      if (hasSup && phdPct >= 30) identityFit = 5.5;
+      else if (masterPct >= 40) identityFit = 7;
+      else if (masterPct >= 25) identityFit = 5;
+      else if (masterPct >= 15) identityFit = 3.5;
+      else identityFit = 1.5;
+    } else if (id === '博士生' || id === '博士') {
+      if (phdPct >= 40) identityFit = 7;
+      else if (phdPct >= 20) identityFit = 5.5;
+      else if (phdPct >= 10) identityFit = 4;
+      else if (masterPct >= 50) identityFit = 2.5;
+      else identityFit = 3;
+    } else if (id === '讲师') {
+      if (phdPct >= 50 && masterPct < 25) identityFit = 4.5;
+      else if (phdPct >= 20 || masterPct >= 20) identityFit = 5.5;
+      else if (masterPct >= 35) identityFit = 6.5;
+      else identityFit = 3.5;
+      if (profile.degree === '硕士') identityFit -= 1;
+      if (profile.degree === '本科') identityFit -= 2;
+    } else if (id === '副教授') {
+      if (phdPct >= 30) identityFit = 6.5;
+      else if (phdPct >= 15 || masterPct >= 25) identityFit = 5.5;
+      else identityFit = 4.5;
+      if (profile.degree === '硕士') identityFit -= 0.8;
+    } else if (id === '教授') {
+      identityFit = phdPct >= 30 ? 7 : 6;
+    } else if (id === '本科生') {
+      const hasSup = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
+      identityFit = hasSup && masterPct >= 25 ? 3.5 : 1.2;
     }
-    reviewTopicBoost = Math.round(Math.min(15, topicHits / Math.max(1, reviewTopics.length) * 15));
+  } else if (profile.identity && journal.authorRequirement) {
+    const req = String(journal.authorRequirement);
+    if (req.includes('无硬性') || req.includes('无身份') || req.includes('不限')) identityFit = 5.5;
+    else if ((profile.identity === '博士生' || profile.identity === '博士') && req.includes('博士')) identityFit = 5.5;
+    else if (profile.identity === '讲师' && (req.includes('博士') || req.includes('硕士'))) identityFit = 5;
+    else if (profile.identity === '硕士生' && req.includes('硕士')) identityFit = 4.5;
   }
-  domainBoost += reviewTopicBoost;
 
-  // 单位层次匹配加成（最多 +10%）
-  let unitBoost = 0;
-  if (currentUnit && journal.unitPreference) {
-    if (journal.unitPreference.includes('985') && currentUnit === '985') unitBoost = 8;
-    else if (journal.unitPreference.includes('211') && (currentUnit === '985' || currentUnit === '211')) unitBoost = 5;
-    else if (journal.unitPreference.includes('优先') && currentUnit === '985') unitBoost = 3;
+  identityFit = clamp(identityFit, 0, 7);
+
+  let unitFit = 3;
+  const unit = profile.unit || (typeof currentUnit !== 'undefined' ? currentUnit : '');
+  const cl = journal.catalogLevel || '';
+  const isTop = cl === 'CSSCI来源刊' || cl === 'SSCI' || cl === 'A&HCI' || cl === 'AMI顶级' || cl === 'AMI权威';
+  const isHigh = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心';
+  const isMid = cl === 'AMI核心';
+  const isLow = cl === 'AMI扩展' || cl === 'AMI入库';
+  const isEntry = cl === '普通期刊' || cl.includes('AMI入库') || cl.includes('AMI职院刊');
+
+  if (unit === '985') {
+    unitFit = isTop ? 5 : isHigh ? 4.5 : isMid ? 4 : 3.5;
+  } else if (unit === '211') {
+    unitFit = isTop ? 3.5 : isHigh ? 4.5 : isMid ? 4.2 : 3.5;
+  } else if (unit === 'normal') {
+    unitFit = isTop ? 1.2 : isHigh ? 2.2 : isMid ? 3.8 : (isLow || isEntry ? 5 : 3.5);
+  } else if (unit === 'vocational') {
+    unitFit = isTop ? 0.5 : isHigh ? 1.2 : isMid ? 2.2 : cl.includes('AMI职院刊') ? 5 : isEntry ? 4.2 : 2.5;
+  } else if (unit === 'independent') {
+    unitFit = (journal.authorRequirement || '').includes('无硬性') ? 4.5 : 2.5;
   }
-  // 独立学者投开放期刊
-  if (currentUnit === 'independent' && (journal.authorRequirement || '').includes('无硬性')) unitBoost += 5;
 
-  // 高校层次-期刊层级匹配：以期刊级别为代理
-  // 学术圈规律：CSSCI→985/211为主；AMI入库→普通高校友好
-  if (currentUnit) {
-    const cl = journal.catalogLevel || '';
-    const isTop = cl === 'CSSCI来源刊' || cl === 'SSCI' || cl === 'A&HCI';
-    const isHigh = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI顶级' || cl === 'AMI权威';
-    const isMid = cl === 'AMI核心';
-    const isLow = cl === 'AMI扩展' || cl === 'AMI入库';
-    const isEntry = cl === '普通期刊' || cl.includes('AMI职院刊') || cl.includes('AMI入库');
+  if (journal.unitPreference && unit) {
+    const pref = String(journal.unitPreference);
+    if (pref.includes('985') && unit !== '985') unitFit -= 1.2;
+    else if (pref.includes('211') && !['985', '211'].includes(unit)) unitFit -= 0.8;
+  }
+  unitFit = clamp(unitFit, 0, 5);
 
-    if (currentUnit === '985') {
-      if (isTop) unitBoost += 6;        // 985+顶级刊：最佳匹配
-      else if (isHigh) unitBoost += 3;  // 985+高级刊：正常
-    } else if (currentUnit === '211') {
-      if (isTop) unitBoost += 3;        // 211+顶级刊：可尝试
-      else if (isHigh) unitBoost += 4;  // 211+高级刊：较匹配
-    } else if (currentUnit === 'normal') {
-      if (isTop) unitBoost -= 12;       // 普通高校+CSSCI：极难
-      else if (isHigh) unitBoost -= 6;  // 普通高校+北大核心/AMI权威：偏难
-      else if (isMid) unitBoost += 2;   // 普通高校+AMI核心：适中
-      else if (isLow || isEntry) unitBoost += 8; // 普通高校+AMI入库/普刊：友好
-    } else if (currentUnit === 'vocational') {
-      if (isTop || isHigh) unitBoost -= 15; // 高职+高级刊：基本不现实
-      else if (isMid) unitBoost -= 5;
-      else if (cl.includes('AMI职院刊')) unitBoost += 10; // 高职+职院刊：完美
-      else if (isEntry) unitBoost += 6;
+  const parseFee = (fee) => {
+    const feeStr = String(fee || '').trim();
+    const explicitFree = /免费|不收(?:取)?版面费|无版面费|版面费\s*0/.test(feeStr);
+    const ambiguous = !feeStr || /待核实|未公开|面议|未知|不详|待确认|尚未公开/.test(feeStr);
+    const nums = feeStr.match(/\d[\d,]*/g);
+    const maxFee = nums && nums.length > 0
+      ? Math.max(...nums.map(n => parseInt(n.replace(/,/g, ''), 10)).filter(n => !Number.isNaN(n)))
+      : 0;
+    return { feeStr, explicitFree, ambiguous, maxFee };
+  };
+
+  const feeInfo = parseFee(journal.pageFee);
+  let feeTransparency = 1.5;
+  if (feeInfo.explicitFree) feeTransparency = 3;
+  else if (feeInfo.ambiguous) feeTransparency = 0.8;
+  else if (feeInfo.maxFee > 0 && feeInfo.maxFee <= 2500) feeTransparency = 2.4;
+  else if (feeInfo.maxFee > 0 && feeInfo.maxFee <= 5000) feeTransparency = 1.6;
+  else if (feeInfo.maxFee > 5000) feeTransparency = 0.8;
+  feeTransparency = clamp(feeTransparency, 0, 3);
+
+  let transparencyPenalty = 0;
+  const reviewCount = (journal.wanweiReviews || []).length;
+  if (journal.wanweiId && reviewCount === 0) transparencyPenalty -= 2;
+  else if (!journal.wanweiId) transparencyPenalty -= 1.5;
+  if (journal.name && journal.name.includes('学报') && reviewCount < 3) transparencyPenalty -= 1.5;
+
+  if (journal.latestIssue) {
+    const yearMatch = String(journal.latestIssue).match(/(\d{4})年/);
+    if (yearMatch) {
+      const currentYear = new Date().getFullYear();
+      const year = parseInt(yearMatch[1], 10);
+      if (year < currentYear - 2) transparencyPenalty -= 2.5;
+      else if (year < currentYear - 1) transparencyPenalty -= 1.2;
     }
   }
 
-  // 地理冲突：论文地域 vs 期刊地域指向是否矛盾
   let geoPenalty = 0;
   const geoRegions = {
     '西藏': ['藏族','藏区','青藏','拉萨','喜马拉雅','唐卡','藏传','雪域','藏戏','格萨尔'],
@@ -1431,147 +1796,79 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
     '巴蜀': ['四川','重庆','蜀','巴渝','成都','川西','羌族','凉山','三星堆'],
     '岭南': ['广东','海南','粤','潮汕','珠三角','广府','雷州'],
     '湖湘': ['湖南','湖北','荆楚','湘西','楚文化','武陵'],
-    '中原': ['河南','郑州','洛阳','开封','中原','河洛'],
+    '中原': ['河南','郑州','洛阳','开封','中原','河洛']
   };
-  const paperLower = (mainText + ' ' + kwText).toLowerCase();
-  const journalLower = ((journal.name||'') + ' ' + (journal.keywords||[]).join(' ') + ' ' + (journal.domains||[]).join(' ') + ' ' + (journal.columns||[]).join(' ')).toLowerCase();
-  // 找论文的地域信号
+
+  const paperLower = allText;
+  const journalLower = toLower(
+    (journal.name || '') + ' ' +
+    journalKeywords.join(' ') + ' ' +
+    journalDomains.join(' ') + ' ' +
+    journalColumns.join(' ')
+  );
+
   let paperRegion = null;
-  for (const [region, terms] of Object.entries(geoRegions)) {
-    for (const t of terms) {
-      if (paperLower.includes(t.toLowerCase())) { paperRegion = region; break; }
-    }
-    if (paperRegion) break;
-  }
-  // 找期刊的地域信号
   let journalRegion = null;
   for (const [region, terms] of Object.entries(geoRegions)) {
-    for (const t of terms) {
-      if (journalLower.includes(t.toLowerCase())) { journalRegion = region; break; }
-    }
-    if (journalRegion) break;
+    if (!paperRegion && terms.some(t => paperLower.includes(toLower(t)))) paperRegion = region;
+    if (!journalRegion && terms.some(t => journalLower.includes(toLower(t)))) journalRegion = region;
   }
-  // 冲突：论文和期刊都有地域信号且不同 → 扣分
   if (paperRegion && journalRegion && paperRegion !== journalRegion) {
-    geoPenalty = -20;
+    geoPenalty = -6;
   }
 
-  // 透明度惩罚：点评极少或无点评的期刊，内部稿嫌疑大
-  let transparencyPenalty = 0;
-  const reviewCount = (journal.wanweiReviews || []).length;
-  const hasEshukanId = !!journal.wanweiId;
-  if (hasEshukanId && reviewCount === 0) {
-    transparencyPenalty = -5; // 有万维页面但0点评 → 缺少外部投稿信号
-  } else if (!hasEshukanId) {
-    transparencyPenalty = -3; // 万维上都没有 → 信息不透明
-  }
-  // 学报 + 无点评 → 内部稿风险更高
-  if (journal.name && journal.name.includes('学报') && reviewCount < 3) {
-    transparencyPenalty -= 4;
-  }
+  const adaptationRaw =
+    domainPart +
+    reviewTopicBoost +
+    columnBoost +
+    identityFit +
+    unitFit +
+    feeTransparency +
+    transparencyPenalty +
+    geoPenalty;
 
-  // 身份-作者画像匹配：你是谁 vs 该刊实际发文者构成
-  const profile = window.currentProfile || {};
-  let identityBoost = 0;
-  const ad = journal.authorDistribution;
-  if (ad && ad.degrees && ad.sampleSize >= 2 && profile.identity) {
-    const deg = ad.degrees;
-    const total = Object.values(deg).reduce((a,b)=>a+b, 0) || 1;
-    const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
-    const phdCount = (deg['博士']||0) + (deg['在读博士']||0) + (deg['博士后']||0);
-    const masterPct = Math.round(masterCount / total * 100);
-    const phdPct = Math.round(phdCount / total * 100);
+  const adaptationScore = clamp(adaptationRaw, 0, 40);
 
-    const id = profile.identity;
-    const degLevel = profile.degree;
+  // ==================== 总分 0-100 ====================
+  const total = coverageScore + precisionScore + adaptationScore;
+  const score = Math.max(0, Math.min(100, Math.round(total)));
 
-    if (id === '硕士生') {
-      if (phdPct >= 70 && masterPct < 25) identityBoost = -18;
-      else if (phdPct >= 60 && masterPct < 25) identityBoost = -12;
-      else if (masterPct >= 40) identityBoost = 10;
-      else if (masterPct >= 25) identityBoost = 3;
-      else if (masterPct >= 15) identityBoost = -3;
-      else if (phdPct >= 50) identityBoost = -10;
-      else identityBoost = -5;
-    } else if (id === '博士生' || id === '博士') {
-      if (phdPct >= 40) identityBoost = 8;
-      else if (phdPct >= 20) identityBoost = 4;
-      else if (phdPct >= 10) identityBoost = 0;
-      else if (masterPct >= 50) identityBoost = -5;
-      else identityBoost = -8;
-    } else if (id === '本科生') {
-      if (masterPct >= 35) identityBoost = 5;
-      else if (masterPct >= 20) identityBoost = 0;
-      else if (phdPct >= 50) identityBoost = -15;
-      else identityBoost = -8;
-    } else if (id === '讲师') {
-      if (phdPct >= 60 && masterPct < 20) identityBoost = -8;
-      else if (phdPct >= 50 && masterPct < 25) identityBoost = -3;
-      else if (masterPct >= 30) identityBoost = 6;
-      else if (phdPct >= 20 || masterPct >= 15) identityBoost = 2;
-      else identityBoost = -2;
-      if (degLevel === '硕士') identityBoost -= 3;
-      else if (degLevel === '本科') identityBoost -= 6;
-    } else if (id === '副教授') {
-      if (phdPct >= 40) identityBoost = 7;
-      else if (phdPct >= 20) identityBoost = 4;
-      else if (masterPct >= 30) identityBoost = 2;
-      else identityBoost = 0;
-      if (degLevel === '硕士') identityBoost -= 2;
-    } else if (id === '教授') {
-      if (phdPct >= 50) identityBoost = 6;
-      else if (phdPct >= 30) identityBoost = 4;
-      else if (masterPct >= 30) identityBoost = 3;
-      else identityBoost = 1;
-    }
-  }
-
-  // 知网独作率匹配加成（基于用户身份与期刊独作率）
-  const sar = journal.recentSingleAuthorRate;
-  const aal = journal.avgArticleLength;
-
-  if (sar !== undefined && sar !== null && profile.identity) {
-    const isSoloStudent = (profile.identity === '硕士生' || profile.identity === '本科生')
-                          && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
-    const isWithSupervisor = (profile.identity === '硕士生' || profile.identity === '本科生')
-                              && (profile.supervisor === 'yes' || profile.supervisor === 'maybe');
-    const isScholar = ['博士生', '博士', '讲师', '副教授', '教授'].includes(profile.identity);
-
-    if (isSoloStudent) {
-      if (sar >= 80) unitBoost += 8;
-      else if (sar >= 60) unitBoost += 3;
-      else if (sar < 40) unitBoost -= 8;
-    } else if (isWithSupervisor) {
-      if (sar >= 60) unitBoost += 3;
-    } else if (isScholar && sar !== undefined) {
-      if (sar < 50) unitBoost += 3;
-    }
-  }
-
-  // 文章篇幅匹配（学者偏好深度刊；学生独作偏好短文刊）
-  if (aal !== undefined && aal !== null && profile.identity) {
-    const isScholar = ['博士生', '博士', '讲师', '副教授', '教授'].includes(profile.identity);
-    const isSoloStudent = (profile.identity === '硕士生' || profile.identity === '本科生')
-                          && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
-
-    if (isScholar && aal >= 10) unitBoost += 4;
-    else if (isSoloStudent && aal <= 4) unitBoost += 3;
-  }
-
-  // 用 sqrt 压制关键词数量优势，奖励精准匹配
-  const dampedWeight = Math.sqrt(totalWeight);
-  const ratio = dampedWeight > 0 ? matchCount / dampedWeight : 0;
   return {
-    score: Math.min(100, Math.round(
-      Math.min(1, ratio) * 65 + domainBoost + columnBoost + userKwBoost + unitBoost + identityBoost + transparencyPenalty + geoPenalty
-    )),
+    score,
     matchedKeywords,
     unmatchedKeywords,
-    ratio,
-    domainBoost: Math.round(domainBoost),
-    columnBoost,
-    userKwBoost
+
+    ratio: coverageRatio,
+    domainBoost: Math.round(domainPart + reviewTopicBoost),
+    columnBoost: Math.round(columnBoost),
+    userKwBoost,
+
+    coverageScore: Math.round(coverageScore),
+    precisionScore: Math.round(precisionScore),
+    adaptationScore: Math.round(adaptationScore),
+    titlePrecision: Math.round(titlePrecision),
+    cnkiPrecision: Math.round(cnkiPrecision),
+    reviewTopicBoost: Math.round(reviewTopicBoost),
+    identityBoost: Math.round(identityFit),
+    unitBoost: Math.round(unitFit),
+    feeTransparency: Math.round(feeTransparency),
+    transparencyPenalty: Math.round(transparencyPenalty),
+    geoPenalty: Math.round(geoPenalty)
   };
+}
+
+function parseReviewDays(cycleStr) {
+  if (!cycleStr) return null;
+  const s = cycleStr.toLowerCase();
+  const nums = s.match(/\d+/g);
+  if (!nums || nums.length === 0) return null;
+  if (s.includes('天')) return parseInt(nums[nums.length - 1]);
+  if (s.includes('周')) return parseInt(nums[nums.length - 1]) * 7;
+  if (s.includes('月')) return parseInt(nums[nums.length - 1]) * 30;
+  if (s.includes('年')) return parseInt(nums[nums.length - 1]) * 365;
+  // 无单位时按范围上限，默认月
+  if (nums.length >= 2) return parseInt(nums[1]) * 30;
+  return parseInt(nums[0]) * 30;
 }
 
 // 计算期刊发表容易度分数（用于保底判定）
@@ -1653,10 +1950,13 @@ function getEaseScore(journal) {
     else score += 4;
   }
 
-  // 5. 版面费 (0-10)：免费更友好
-  if (!journal.pageFee) score += 10;
+  // 5. 版面费 (0-10)：免费更友好，未知不当作免费
+  const feeStr = String(journal.pageFee || '').trim();
+  const explicitFree = /免费|不收(?:取)?版面费|无版面费|版面费\s*0/.test(feeStr);
+  const ambiguousFee = !feeStr || /待核实|未公开|面议|未知|不详|待确认|尚未公开/.test(feeStr);
+  if (explicitFree) score += 10;
+  else if (ambiguousFee) score += 3;
   else {
-    const feeStr = String(journal.pageFee);
     const nums = feeStr.match(/\d[\d,]*/g);
     if (nums) {
       const maxFee = Math.max(...nums.map(n => parseInt(n.replace(/,/g, ''))));
@@ -1743,76 +2043,121 @@ function determineTier(matchScore, journal) {
   const cl = journal.catalogLevel || '';
   const ease = getEaseScore(journal);
   const isTop = (cl === 'CSSCI来源刊' || cl === 'SSCI' || cl === 'A&HCI' || cl === 'AMI顶级' || cl === 'AMI权威');
-  const isCore = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI核心' || cl === 'AMI扩展';
+  const isCore = isTop || cl === 'CSSCI扩展版' || cl === 'CSSCI集刊' || cl === '北大核心' || cl === 'AMI核心';
+  const isExtended = cl === 'AMI扩展';
   const isEntry = cl === '普通期刊' || cl.includes('AMI入库') || cl.includes('AMI职院刊');
 
-  // 万维书刊网录用率调整：高录用率降半级，极低录用率升半级
+  // 万维书刊网录用率调整：高录用率降一级，极低录用率升一级
   const stats = journal.wanweiReviewStats;
   const acceptanceRate = stats && stats.acceptanceRate !== undefined ? stats.acceptanceRate : null;
-  let tierAdjust = 0;
-  if (acceptanceRate !== null && stats.total >= 3) {
-    if (acceptanceRate >= 50) tierAdjust = -1; // 录用率高 → 降一级（更容易）
-    else if (acceptanceRate < 5) tierAdjust = 1;  // 录用率极低 → 升一级（更难）
-  }
+  const adjustAcceptance = (acceptanceRate !== null && stats.total >= 3)
+    ? (acceptanceRate >= 50 ? -1 : acceptanceRate < 5 ? 1 : 0) : 0;
 
-  // 学生友好度调整：硕士占比高 → 对学生降一级
+  // 学生友好度调整：硕士占比高 → 降一级
   const ad = journal.authorDistribution;
+  let adjustStudent = 0;
   if (ad && ad.degrees) {
     const deg = ad.degrees || {};
     const total = Object.values(deg).reduce((a,b)=>a+b, 0);
     const masterCount = (deg['硕士']||0) + (deg['在读硕士']||0);
     const masterPct = total > 0 ? masterCount / total * 100 : 0;
-    if (masterPct >= 40) tierAdjust = Math.min(tierAdjust, -1); // 硕士友好，降级
+    if (masterPct >= 40) adjustStudent = -1;
   }
 
-  // Helper: apply tier adjustment
+  const tierAdjust = adjustAcceptance + adjustStudent; // -2 ~ 1
+
+  // Helper: apply tier adjustment (支持 ±2 档)
   function adjusted(tier) {
-    if (tierAdjust === 0) return tier;
-    if (tierAdjust < 0 && tier === 'reach') return 'match';
-    if (tierAdjust < 0 && tier === 'match') return 'safe';
-    if (tierAdjust > 0 && tier === 'match') return 'reach';
-    if (tierAdjust > 0 && tier === 'safe') return 'match';
-    return tier;
+    const order = ['reach', 'match', 'safe']; // blocked 只能由 checkConstraints 硬拦截产生，不被软调整推入
+    const idx = order.indexOf(tier);
+    if (idx < 0) return tier;
+    const newIdx = Math.max(0, Math.min(order.length - 1, idx - tierAdjust));
+    return order[newIdx];
   }
 
-  // 硕士独作/无资源 → 核心期刊门槛提高
+  // 硕士/博士/本科独作 → 核心期刊门槛提高；maybe 只降低门槛，不等同 yes
   const profile = window.currentProfile || {};
-  const isSoloMaster = profile.identity === '硕士生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
-  const isSoloBachelor = profile.identity === '本科生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  const supervisorConfirmed = profile.supervisor === 'yes';
+  const supervisorMaybe = profile.supervisor === 'maybe';
+
+  const isMaster = profile.identity === '硕士生';
+  const isBachelor = profile.identity === '本科生';
+  const isPhd = profile.identity === '博士生' || profile.identity === '博士';
+
+  const isSoloMaster = isMaster && !supervisorConfirmed && !supervisorMaybe;
+  const isMaybeMaster = isMaster && supervisorMaybe;
+  const isSoloBachelor = isBachelor && !supervisorConfirmed && !supervisorMaybe;
+  const isMaybeBachelor = isBachelor && supervisorMaybe;
+  const isSoloPhd = isPhd && !supervisorConfirmed && !supervisorMaybe;
+  const isMaybePhd = isPhd && supervisorMaybe;
+
   const hasNoResources = profile.funding === 'no' && (profile.unit === 'normal' || profile.unit === 'vocational');
 
   let hardMode = 0;
-  if (isSoloMaster && hasNoResources) hardMode = 15;
+
+  // 硕士/本科：沿用原逻辑；maybe 先按独作算，后面统一减半
+  if ((isSoloMaster || isMaybeMaster) && hasNoResources) hardMode = 15;
+  else if (isMaybeMaster) hardMode = 10;
   else if (isSoloMaster) hardMode = 10;
+  else if (isMaybeBachelor) hardMode = 20;
   else if (isSoloBachelor) hardMode = 20;
 
-  // 讲师/副教授：顶级期刊竞争烈度微调（不封锁，但提高匹配门槛以反映真实竞争）
+  // 博士生独作：按单位层次 + 期刊层次加门槛
+  if (isSoloPhd || isMaybePhd) {
+    if (profile.unit === '985') {
+      if (isTop) hardMode = Math.max(hardMode, 2);
+      else if (isCore) hardMode = Math.max(hardMode, 1);
+    } else if (profile.unit === '211') {
+      if (isTop) hardMode = Math.max(hardMode, 4);
+      else if (isCore) hardMode = Math.max(hardMode, 2);
+    } else if (profile.unit === 'normal') {
+      if (isTop) hardMode = Math.max(hardMode, 6);
+      else if (isCore) hardMode = Math.max(hardMode, 3);
+    } else if (profile.unit === 'vocational' || profile.unit === 'independent') {
+      if (isTop) hardMode = Math.max(hardMode, 8);
+      else if (isCore) hardMode = Math.max(hardMode, 5);
+    } else {
+      if (isTop) hardMode = Math.max(hardMode, 5);
+      else if (isCore) hardMode = Math.max(hardMode, 3);
+    }
+  }
+
+  // maybe：不解除 checkConstraints 的硬拦截；
+  // 只在能进入 determineTier 的期刊上体现"潜在导师资源"，将层级门槛减半
+  if (supervisorMaybe) {
+    hardMode = Math.ceil(hardMode * 0.5);
+  }
+
+  // 讲师/副教授：核心及以上期刊提高匹配门槛（不封锁，但反映真实竞争）
   const isLecturer = profile.identity === '讲师';
   const isAssociateProf = profile.identity === '副教授';
-  if (isLecturer && isTop && (acceptanceRate !== null && acceptanceRate < 10 && stats.total >= 3)) {
-    hardMode = 5; // 录用率极低的CSSCI来源刊，讲师竞争较大
-  }
-  if (isAssociateProf && isTop && (acceptanceRate !== null && acceptanceRate < 5 && stats.total >= 3)) {
-    hardMode = 3; // 录用率极低的顶刊，副教授也需要更多匹配度
-  }
+  const isProf = profile.identity === '教授';
+  if (isLecturer && isTop) hardMode = Math.max(hardMode, 5);
+  else if (isLecturer && isCore) hardMode = Math.max(hardMode, 3);
+  else if (isAssociateProf && isTop) hardMode = Math.max(hardMode, 3);
+  else if (isAssociateProf && isCore) hardMode = Math.max(hardMode, 2);
+  else if (isProf && isTop) hardMode = Math.max(hardMode, 1);
 
   // 冲刺：高匹配 + 顶级/核心期刊
   if (matchScore >= 50 + hardMode && isTop) return adjusted('reach');
   if (matchScore >= 55 + hardMode && isCore) return adjusted('reach');
 
-  // 匹配：中等匹配 + 核心期刊，或高匹配 + 扩展期刊
+  // 匹配：中等匹配 + 核心期刊
   if (matchScore >= 40 + hardMode && isCore) return adjusted('match');
-  if (matchScore >= 45 + hardMode * 0.7 && !isTop && !isEntry) return adjusted('match');
+  // AMI扩展：高匹配 → 匹配，其他 → 保底
+  if (isExtended && matchScore >= 50) return adjusted('match');
+  if (isExtended && matchScore >= 20) return adjusted('safe');
+  // 非顶级非入门：较高匹配 → 匹配
+  if (matchScore >= 45 + hardMode * 0.7 && !isTop && !isEntry && !isExtended) return adjusted('match');
 
-  // 保底：容易发表（ease>=60）且有基本匹配（>=15）
-  if (ease >= 60 && matchScore >= 15) return adjusted('safe');
+  // 保底：容易发表（ease>=60）且有基本匹配
+  if (ease >= 60 && matchScore >= 20) return adjusted('safe');
   // 入门级期刊，非常容易发表
-  if (ease >= 70 && matchScore >= 10) return adjusted('safe');
+  if (ease >= 70 && matchScore >= 15) return adjusted('safe');
   // 有一定匹配的普通期刊
-  if (isEntry && matchScore >= 20) return adjusted('safe');
+  if ((isEntry || isExtended) && matchScore >= 25) return adjusted('safe');
   // 兜底
-  if (matchScore >= 25 && ease >= 40) return adjusted('safe');
-  if (matchScore >= 18 && ease >= 55) return adjusted('safe');
+  if (matchScore >= 30 && ease >= 50) return adjusted('safe');
 
   return null;
 }
@@ -1832,24 +2177,27 @@ function checkConstraints(journal, profile) {
   }
 
   // 硬性拦截：硕士独作/本科 → CSSCI扩展版及以上一律不推荐
-  const isSoloMaster = profile.identity === '硕士生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
-  const isSoloBachelor = profile.identity === '本科生' && profile.supervisor !== 'yes' && profile.supervisor !== 'maybe';
+  // yes=已确认导师支持，maybe=导师可能挂名但未确认(不解除硬约束)，no/空=独作
+  const supervisorConfirmed = profile.supervisor === 'yes';
+  const supervisorMaybe = profile.supervisor === 'maybe';
+  const isSoloMaster = profile.identity === '硕士生' && !supervisorConfirmed;
+  const isSoloBachelor = profile.identity === '本科生' && !supervisorConfirmed;
   const cl = journal.catalogLevel || '';
   const isHighLevel = cl.includes('CSSCI') || cl === 'SSCI' || cl === 'A&HCI' || cl === '北大核心' || cl === 'AMI顶级' || cl === 'AMI权威';
   const isMidLevel = cl === 'AMI核心';
 
   if (isSoloMaster && isHighLevel) {
     blocked = true;
-    warnings.push('硕士独作极难被' + cl + '录用，建议有导师挂名通讯后再考虑此类期刊');
+    warnings.push('硕士独作极难被' + cl + '录用，建议有导师挂名通讯后再考虑此类期刊' + (supervisorMaybe ? '；当前导师挂名尚未确认，暂按无导师处理' : ''));
   }
   if (isSoloBachelor && (isHighLevel || isMidLevel)) {
     blocked = true;
-    warnings.push('本科独作基本不可能被' + cl + '录用，建议从AMI入库/普通期刊起步');
+    warnings.push('本科独作基本不可能被' + cl + '录用，建议从AMI入库/普通期刊起步' + (supervisorMaybe ? '；当前导师支持尚未确认，暂按无导师处理' : ''));
   }
 
-  // 作者身份限制（导师支持可放宽一档；maybe 升档但加提示）
+  // 作者身份限制：只有 confirmed yes 才放宽一档；maybe 不升级身份
   let effectiveIdentity = profile.identity;
-  const supervisorAvailable = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
+  const supervisorAvailable = supervisorConfirmed;
   if (supervisorAvailable && profile.identity === '硕士生') effectiveIdentity = '博士生';
   if (supervisorAvailable && profile.identity === '博士生') effectiveIdentity = '讲师';
   if (supervisorAvailable && profile.identity === '本科生') effectiveIdentity = '硕士生';
@@ -1866,30 +2214,38 @@ function checkConstraints(journal, profile) {
   if (profile.identity && journal.authorRequirement) {
     const result = authorMeetsRequirement(effectiveIdentity, journal.authorRequirement);
     if (!result.meets) {
-      if (supervisorAvailable) {
-        const tail = profile.supervisor === 'maybe' ? '（注：导师挂名意向待确认）' : '';
-        warnings.push(`身份不满足：该刊要求${result.minLevel}，有导师支持可尝试${tail}`);
+      if (supervisorConfirmed) {
+        warnings.push(`身份不满足：该刊要求${result.minLevel}，有导师支持可尝试`);
       } else {
         blocked = true;
-        warnings.push(`身份不匹配：该刊要求${result.minLevel}，你为${effectiveIdentity}（有导师支持可改善）`);
+        const tail = supervisorMaybe ? '（导师挂名尚未确认，暂按无导师处理）' : '（有导师支持可改善）';
+        warnings.push(`身份不匹配：该刊要求${result.minLevel}，你为${effectiveIdentity}${tail}`);
       }
     } else if (result.minLevel && result.minLevel !== '不限') {
       // 要求中提到需要导师但用户没有 → 对核心期刊直接拦截
-      if (result.minLevel.includes('导师') && !supervisorAvailable) {
-        const cl = journal.catalogLevel || '';
-        const isCore = cl.includes('CSSCI') || cl === '北大核心' || cl === 'AMI权威' || cl === 'AMI顶级' || cl === 'AMI核心';
-        if (isCore) {
-          blocked = true;
-          warnings.push(`该刊明确要求${result.minLevel}，你目前无导师支持，建议改投低一级期刊`);
-        } else {
-          warnings.push(`该刊要求${result.minLevel}，无导师支持情况下难度很大`);
+      // 但如果用户级别已经高于 minLevel 隐含的基础级别（如讲师≥硕士+导师），不触发
+      if (result.minLevel.includes('导师') && !supervisorConfirmed) {
+        const LV = ['本科生', '硕士', '博士', '讲师', '副教授', '教授'];
+        const baseLevel = result.minLevel.replace(/[+＋]导师.*$/, '').replace(/[（(].*[）)]/, '').trim();
+        const baseIdx = LV.findIndex(l => l.includes(baseLevel) || baseLevel.includes(l));
+        const userIdx = LV.findIndex(l => l.includes(effectiveIdentity) || effectiveIdentity.includes(l));
+        const aboveMin = baseIdx >= 0 && userIdx > baseIdx;
+        if (!aboveMin) {
+          const cl = journal.catalogLevel || '';
+          const isCore = cl.includes('CSSCI') || cl === '北大核心' || cl === 'AMI权威' || cl === 'AMI顶级' || cl === 'AMI核心';
+          if (isCore) {
+            blocked = true;
+            warnings.push(`该刊明确要求${result.minLevel}，你目前无已确认导师支持，建议改投低一级期刊` + (supervisorMaybe ? '；若导师最终确认，可重新评估' : ''));
+          } else {
+            warnings.push(`该刊要求${result.minLevel}，无已确认导师支持情况下难度很大` + (supervisorMaybe ? '；若导师最终确认，可尝试' : ''));
+          }
         }
       }
       // 边际满足但竞争大
-      else if (profile.identity === '硕士生' && result.minLevel.includes('硕士') && !supervisorAvailable) {
+      else if (profile.identity === '硕士生' && result.minLevel.includes('硕士') && !supervisorConfirmed) {
         const ease = getEaseScore(journal);
         if (ease < 55) {
-          warnings.push(`你的身份可满足，但该刊竞争较大，建议有导师支持`);
+          warnings.push(`你的身份可满足，但该刊竞争较大，建议有导师支持` + (supervisorMaybe ? '；当前导师支持尚未确认' : ''));
         }
       }
     }
@@ -1906,16 +2262,16 @@ function checkConstraints(journal, profile) {
     const phdPct = total > 0 ? phdCount / total * 100 : 0;
 
     // 硕士独作 + 博士垄断 → 基本等于关系户才能发
-    if (profile.identity === '硕士生' && phdPct >= 70 && masterPct < 25 && !supervisorAvailable) {
+    if (profile.identity === '硕士生' && phdPct >= 70 && masterPct < 25 && !supervisorConfirmed) {
       blocked = true;
       warnings.push('该刊实际投稿者博士占' + Math.round(phdPct) + '%，硕士仅' + Math.round(masterPct) + '%（多为关系稿），硕士独作不建议尝试');
-    } else if (profile.identity === '硕士生' && masterPct < 10 && phdPct > 75 && !supervisorAvailable) {
+    } else if (profile.identity === '硕士生' && masterPct < 10 && phdPct > 75 && !supervisorConfirmed) {
       blocked = true;
       warnings.push('该刊实际投稿者以博士为主(' + Math.round(phdPct) + '%)，硕士独作极难。建议有导师通讯支持后再投');
-    } else if (profile.identity === '硕士生' && masterPct < 20 && phdPct > 60 && !supervisorAvailable) {
+    } else if (profile.identity === '硕士生' && masterPct < 20 && phdPct > 60 && !supervisorConfirmed) {
       warnings.push('该刊硕士比例较低(约' + Math.round(masterPct) + '%)且博士占' + Math.round(phdPct) + '%，硕士独作难度很大，建议有导师支持');
     }
-    if (profile.identity === '本科生' && masterPct < 5 && phdPct > 60 && !supervisorAvailable) {
+    if (profile.identity === '本科生' && masterPct < 5 && phdPct > 60 && !supervisorConfirmed) {
       blocked = true;
       warnings.push('该刊实际投稿者中博士占' + Math.round(phdPct) + '%，本科生极少。建议有导师支持后再试');
     }
@@ -1942,61 +2298,80 @@ function checkConstraints(journal, profile) {
     if (profile.identity === '本科生' && (rp.includes('教授为主') || rp.includes('95%以上') || rp.includes('基本不')) && !rp.includes('学生') && !rp.includes('无要求')) {
       blocked = true;
     }
-    if (profile.identity === '硕士生' && rp.includes('教授为主') && !supervisorAvailable) {
+    if (profile.identity === '硕士生' && rp.includes('教授为主') && !supervisorConfirmed) {
       blocked = true;
       warnings.push('实际发表者以教授为主，硕士独作极难。建议有导师通讯支持后再投');
     }
   }
 
-  if (journal.requiresFunding && profile.funding !== 'yes') {
-    warnings.push('该刊硬性要求基金支持');
-    if (profile.funding === 'no') blocked = true;
-  }
-  if (!journal.requiresFunding && profile.funding !== 'yes') {
+  if (profile.funding !== 'yes') {
     const rpCheck = (journal.realAuthorProfile || '') + (journal.preferredTopics || '');
     if (rpCheck.includes('基金') || rpCheck.includes('项目支撑')) {
       warnings.push('该刊未硬性要求但实际偏好有基金项目支撑的论文');
     }
   }
 
-  if (profile.language && journal.language !== '中文/英文') {
-    if (!journal.language.includes(profile.language)) {
-      warnings.push(`该刊主要收${journal.language}稿件`);
+  if (profile.language && journal.language) {
+    // 解析期刊语言为支持集合，避免"中、英文"误通过纯英文刊
+    function parseLangSet(lang) {
+      const s = String(lang || '').toLowerCase();
+      const set = new Set();
+      if (/中文|中、英|中英|中\/英|汉语|[一-鿿]/.test(s)) set.add('中文');
+      if (/英文|english|中、英|中英|中\/英|en\b/i.test(s)) set.add('英文');
+      if (set.size === 0 && s) set.add(s); // 兜底
+      return set;
+    }
+    const supported = parseLangSet(journal.language);
+    if (supported.size > 0 && !supported.has(profile.language)) {
+      warnings.push('该刊主要收' + journal.language + '稿件，与你的论文语言不匹配');
       blocked = true;
     }
   }
 
-  // 时间约束：优先用万维真实审稿周期
+  // 时间约束
   if (profile.timeline) {
     const statsRT = journal.wanweiReviewStats;
     let maxDays = null;
     if (statsRT && statsRT.reviewTimeMax) {
       maxDays = statsRT.reviewTimeMax;
     } else if (journal.reviewCycle) {
-      // 回退：从 reviewCycle 文本推断
-      const cycleStr = journal.reviewCycle;
-      const nums = cycleStr.match(/\d+/g);
-      if (nums && nums.length >= 2) {
-        maxDays = parseInt(nums[1]) * 30; // assume months → days
-      }
+      maxDays = parseReviewDays(journal.reviewCycle);
     }
     if (maxDays !== null) {
       const timelineDays = parseInt(profile.timeline) * 30;
       const maxDisplay = maxDays >= 60 ? Math.round(maxDays/30) + '个月' : maxDays + '天';
-      if (timelineDays < maxDays) {
-        warnings.push('审稿周期(' + maxDisplay + ')可能超出你的时间要求(' + profile.timeline + '个月)');
+      const ratio = maxDays / timelineDays;
+      if (ratio > 2) {
+        blocked = true;
+        warnings.push('审稿周期(' + maxDisplay + ')远超你的时间要求，已排除');
+      } else if (ratio > 1.3) {
+        warnings.push('审稿周期(' + maxDisplay + ')可能超出你的时间要求');
       }
     }
   }
 
+  // 预算约束（仅当用户显式设置了预算时才检查）
   if (profile.budget && journal.pageFee) {
     const feeStr = String(journal.pageFee);
     const nums = feeStr.match(/\d[\d,]*/g);
-    if (nums && nums.length > 0) {
-      const maxFee = Math.max(...nums.map(n => parseInt(n.replace(/,/g, ''))));
-      if (maxFee > parseInt(profile.budget)) {
-        warnings.push(`版面费可能超出预算（预估${feeStr}）`);
+    const maxFee = nums && nums.length > 0 ? Math.max(...nums.map(n => parseInt(n.replace(/,/g, '')))) : 0;
+    const budgetLimit = parseInt(profile.budget);
+    if (budgetLimit === 0) {
+      // "待核实/未公开/面议"等是占位符，不是收费证据
+      const ambiguousFee = /待核实|未公开|面议|未知|不详|待确认|尚未公开/.test(feeStr);
+      const explicitFree = /免费|不收(?:取)?版面费|无版面费|版面费\s*0/.test(feeStr);
+      const explicitCharge = /收取版面费|需(?:要|交|付)版面费|版面费[约每]?\d/.test(feeStr) && !explicitFree;
+      if (maxFee > 0 || explicitCharge) {
+        blocked = true;
+        warnings.push('该刊收取版面费' + (maxFee > 0 ? '（约' + feeStr + '）' : '') + '，与"仅免费期刊"矛盾，已排除');
+      } else if (ambiguousFee && !explicitFree) {
+        warnings.push('该刊版面费为"' + feeStr + '"，建议投稿前向编辑部核实');
       }
+    } else if (maxFee > budgetLimit * 2) {
+      blocked = true;
+      warnings.push('版面费远超预算（预估' + feeStr + '），已排除');
+    } else if (maxFee > budgetLimit) {
+      warnings.push('版面费可能超出预算（预估' + feeStr + '）');
     }
   }
 
@@ -2105,7 +2480,6 @@ function doSearch() {
     province: $('profile-province').value,
     unitName: $('profile-unit-name').value.trim()
   };
-  currentDiscipline = $('profile-discipline').value;
   currentUnit = profile.unit;
   currentUserLabel = getUserLabel(profile);
   window.currentProfile = profile;
@@ -2126,7 +2500,7 @@ function doSearch() {
 
   for (const journal of journalDatabase) {
     const match = computeMatchScore(paperText, paperKeywords, journal, currentDiscipline);
-    if (match.score === 0) continue;
+    if (match.score <= 0) continue;
 
     const constraints = checkConstraints(journal, profile);
 
@@ -2274,64 +2648,346 @@ function applyFiltersAndRender() {
   renderResults(filtered);
 }
 
-function buildStrategyPanel(grouped) {
+function buildStrategyPanel(grouped, profile) {
   const reach = grouped.reach || [];
   const match = grouped.match || [];
   const safe = grouped.safe || [];
+  const p = profile || (typeof window !== 'undefined' ? (window.currentProfile || {}) : {});
 
   if (reach.length === 0 && match.length === 0 && safe.length === 0) return '';
 
-  // Pick best from each tier (minimum match score: 25%)
-  const pickBest = (list, n) => {
-    return [...list]
-      .filter(r => r.matchScore >= 25)
-      .sort((a, b) => {
-        const sa = a.matchScore * 0.5 + (a.journal.reputation?.score || 50) * 0.3 + (a.journal.wanweiReviewStats?.acceptanceRate || 0) * 0.2;
-        const sb = b.matchScore * 0.5 + (b.journal.reputation?.score || 50) * 0.3 + (b.journal.wanweiReviewStats?.acceptanceRate || 0) * 0.2;
-        return sb - sa;
-      }).slice(0, n);
+  const esc = s => String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+  const getPaperText = () => {
+    let t = '';
+    try {
+      if (typeof window !== 'undefined' && window.currentPaperText) t += ' ' + window.currentPaperText;
+      if (typeof $ === 'function') {
+        t += ' ' + ($('paper-title')?.value || '');
+        t += ' ' + ($('paper-abstract')?.value || '');
+        t += ' ' + ($('paper-keywords')?.value || '');
+      }
+    } catch (e) {}
+    return String(t || '').toLowerCase();
   };
 
-  const topReach = pickBest(reach, 2);
-  const topMatch = pickBest(match, 3);
-  const topSafe = pickBest(safe, 3);
+  const parseCycleDays = cycleStr => {
+    if (!cycleStr) return null;
+    const s = String(cycleStr).toLowerCase();
+    const nums = s.match(/\d+(?:\.\d+)?/g);
+    if (!nums || nums.length === 0) return null;
+    const n = parseFloat(nums[nums.length - 1]);
+    if (s.includes('天')) return Math.round(n);
+    if (s.includes('周')) return Math.round(n * 7);
+    if (s.includes('月')) return Math.round(n * 30);
+    if (s.includes('年')) return Math.round(n * 365);
+    return Math.round(n * 30);
+  };
 
-  const renderRow = (r, idx, tier) => {
-    const j = r.journal;
-    const rep = j.reputation;
-    const repStr = rep ? '<span style=\"color:' + (rep.score >= 55 ? '#2e7d32' : '#888') + ';font-size:0.72rem;\">👍' + rep.score + '</span>' : '';
-    const reviewStr = j.wanweiReviewStats?.reviewTimeAvg
-      ? '<span style=\"color:#999;font-size:0.72rem;\">审稿~' + (j.wanweiReviewStats.reviewTimeAvg >= 60 ? Math.round(j.wanweiReviewStats.reviewTimeAvg/30) + '月' : j.wanweiReviewStats.reviewTimeAvg + '天') + '</span>'
-      : '';
-    return '<div style=\"display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.82rem;\">'
-      + '<span style=\"color:#999;width:18px;text-align:center;flex-shrink:0;\">' + (idx + 1) + '</span>'
-      + '<span style=\"flex:1;color:#2c2c2c;font-weight:500;\">' + j.name + '</span>'
-      + '<span style=\"color:#8b6914;font-size:0.75rem;\">匹配' + r.matchScore + '%</span>'
-      + repStr + reviewStr
+  const freqDays = freq => ({
+    '周刊': 7, '旬刊': 10, '半月刊': 15, '月刊': 30,
+    '双月刊': 60, '季刊': 90, '半年刊': 180, '年刊': 365
+  }[freq] || null);
+
+  const getReviewDays = j => {
+    const stats = j.wanweiReviewStats || {};
+    if (stats.reviewTimeAvg) return Math.round(stats.reviewTimeAvg);
+    if (stats.reviewTimeMax) return Math.round(stats.reviewTimeMax * 0.7);
+    return parseCycleDays(j.reviewCycle);
+  };
+
+  const fmtDays = days => {
+    if (!days && days !== 0) return '待核实';
+    if (days < 45) return Math.round(days) + '天';
+    return '约' + Math.max(1, Math.round(days / 30)) + '个月';
+  };
+
+  const timelineMonths = p.timeline ? parseInt(p.timeline, 10) : null;
+  const urgentMode = timelineMonths && timelineMonths <= 3;
+
+  const getSwitchDays = (item, tierKey) => {
+    const j = item.journal || {};
+    const rd = getReviewDays(j);
+    const fd = freqDays(j.frequency);
+    const base = rd || (fd ? fd * 1.4 : null);
+    const fallback = tierKey === 'reach' ? 60 : tierKey === 'match' ? 45 : 35;
+    const raw = base || fallback;
+
+    if (urgentMode) {
+      const urgentCap = tierKey === 'reach' ? 35 : tierKey === 'match' ? 28 : 21;
+      return Math.round(clamp(raw * 0.65, 14, urgentCap));
+    }
+
+    const multiplier = tierKey === 'reach' ? 1.15 : tierKey === 'match' ? 1.05 : 1;
+    return Math.round(clamp(raw * multiplier, 21, tierKey === 'reach' ? 90 : tierKey === 'match' ? 75 : 60));
+  };
+
+  const getMaxFee = pageFee => {
+    const feeStr = String(pageFee || '').trim();
+    if (!feeStr || /免费|不收(?:取)?版面费|无版面费|版面费\s*0/.test(feeStr)) {
+      return { min: 0, max: 0, unknown: false };
+    }
+    if (/待核实|未公开|面议|未知|不详|待确认|尚未公开/.test(feeStr)) {
+      return { min: 0, max: 0, unknown: true };
+    }
+    const nums = feeStr.match(/\d[\d,]*/g);
+    if (!nums || nums.length === 0) return { min: 0, max: 0, unknown: true };
+    const vals = nums.map(n => parseInt(n.replace(/,/g, ''), 10)).filter(n => !Number.isNaN(n));
+    if (vals.length === 0) return { min: 0, max: 0, unknown: true };
+    return { min: Math.min(...vals), max: Math.max(...vals), unknown: false };
+  };
+
+  const feePlanText = items => {
+    let min = 0, max = 0, unknown = 0;
+    items.forEach(item => {
+      const f = getMaxFee(item.journal?.pageFee);
+      if (f.unknown) unknown++;
+      min += f.min;
+      max += f.max;
+    });
+    const money = n => '¥' + n.toLocaleString('zh-CN');
+    if (max === 0 && unknown === 0) return '首选全中：预计0元版面费';
+    if (unknown > 0 && max === 0) return '首选全中：费用待核实（' + unknown + '本未公开）';
+    const range = min === max ? money(max) : money(min) + '–' + money(max);
+    return unknown > 0 ? '首选全中：已知约' + range + '，另' + unknown + '本待核实' : '首选全中：约' + range;
+  };
+
+  const getRiskTags = item => {
+    const j = item.journal || {};
+    const tags = [];
+    const rd = getReviewDays(j);
+    const stats = j.wanweiReviewStats || {};
+    const currentYear = new Date().getFullYear();
+
+    if (urgentMode && rd && rd > 45) tags.push({ text: '不适合急投', color: '#c62828', bg: '#ffebee' });
+    else if (rd && rd > 90) tags.push({ text: '审稿慢', color: '#c62828', bg: '#ffebee' });
+    else if (rd && rd > 60) tags.push({ text: '周期偏长', color: '#e65100', bg: '#fff3e0' });
+
+    if (stats.total >= 3 && stats.acceptanceRate !== undefined) {
+      if (stats.acceptanceRate < 5) tags.push({ text: '录用极低', color: '#c62828', bg: '#ffebee' });
+      else if (stats.acceptanceRate < 15) tags.push({ text: '录用低', color: '#e65100', bg: '#fff3e0' });
+    }
+
+    if (j.unitPreference && p.unit) {
+      const pref = String(j.unitPreference);
+      if (pref.includes('985') && p.unit !== '985') tags.push({ text: '偏好985', color: '#8b6914', bg: '#fff8e1' });
+      else if (pref.includes('211') && !['985', '211'].includes(p.unit)) tags.push({ text: '偏好211+', color: '#8b6914', bg: '#fff8e1' });
+    }
+
+    if (j.latestIssue) {
+      const m = String(j.latestIssue).match(/(\d{4})年/);
+      if (m && parseInt(m[1], 10) < currentYear - 1) tags.push({ text: '不活跃', color: '#c62828', bg: '#ffebee' });
+    }
+
+    const f = getMaxFee(j.pageFee);
+    if (f.unknown) tags.push({ text: '费待核', color: '#8b6914', bg: '#fff8e1' });
+    else if (f.max >= 5000) tags.push({ text: '费用高', color: '#e65100', bg: '#fff3e0' });
+
+    if (j.wanweiId && (j.wanweiReviews || []).length === 0) {
+      tags.push({ text: '外投少', color: '#777', bg: '#f5f5f5' });
+    }
+
+    if (item.warnings && item.warnings.length > 0) {
+      const w = item.warnings.find(x => /基金|导师|身份|985|审稿|版面费|内稿|学报/.test(x));
+      if (w) tags.push({ text: w.replace(/[，。；].*$/, '').slice(0, 6), color: '#8b6914', bg: '#fff8e1' });
+    }
+
+    return tags.slice(0, 2);
+  };
+
+  const scoreItem = (item, role) => {
+    const j = item.journal || {};
+    const stats = j.wanweiReviewStats || {};
+    const rep = j.reputation?.score ?? 50;
+    const ar = stats.total >= 3 && stats.acceptanceRate !== undefined ? stats.acceptanceRate : 15;
+    const rd = getReviewDays(j);
+    const speedScore = rd ? clamp(100 - rd, 0, 100) : 45;
+    const fee = getMaxFee(j.pageFee);
+    const feeScore = fee.unknown ? 40 : fee.max === 0 ? 100 : clamp(100 - fee.max / 80, 0, 100);
+
+    let roleBias = 0;
+    if (role === 'reach') roleBias += item.tier === 'reach' ? 8 : 0;
+    if (role === 'match') roleBias += item.tier === 'match' ? 8 : 0;
+    if (role === 'safe') roleBias += item.tier === 'safe' ? 12 : 0;
+
+    if (urgentMode) {
+      return item.matchScore * 0.36 + rep * 0.14 + ar * 0.14 + speedScore * 0.28 + feeScore * 0.08 + roleBias;
+    }
+    return item.matchScore * 0.44 + rep * 0.22 + ar * 0.16 + speedScore * 0.12 + feeScore * 0.06 + roleBias;
+  };
+
+  const pickBest = (list, n, role) => [...list]
+    .filter(r => r && r.journal && r.matchScore >= 25)
+    .sort((a, b) => scoreItem(b, role) - scoreItem(a, role))
+    .slice(0, n);
+
+  const tierMeta = {
+    reach: { label: '冲刺', color: '#c62828', bg: '#ffebee', list: reach, role: 'reach', waitLabel: '首投' },
+    match: { label: '主攻', color: '#1565c0', bg: '#e3f2fd', list: match, role: 'match', waitLabel: '转投' },
+    safe:  { label: '保底', color: '#2e7d32', bg: '#e8f5e9', list: safe, role: 'safe', waitLabel: '保底' }
+  };
+
+  const tierPicks = ['reach', 'match', 'safe']
+    .map(key => {
+      const meta = tierMeta[key];
+      const picks = pickBest(meta.list, 2, meta.role);
+      return { key, meta, picks, primary: picks[0] || null, backup: picks[1] || null };
+    })
+    .filter(x => x.picks.length > 0);
+
+  if (tierPicks.length === 0) return '';
+
+  const primaryPlan = tierPicks.map(x => x.primary).filter(Boolean);
+
+  const isSoloPhd = (p.identity === '博士生' || p.identity === '博士') && p.supervisor !== 'yes' && p.supervisor !== 'maybe';
+  const isLecturerPhd = p.identity === '讲师' && (!p.degree || p.degree === '博士');
+  const isMasterWithSup = p.identity === '硕士生' && (p.supervisor === 'yes' || p.supervisor === 'maybe');
+
+  let personaText = '建议采用单篇顺序投稿：首投最有价值的一本，同时备好主攻和保底版本。';
+  if (urgentMode) {
+    personaText = '紧迫模式：目标3个月内见录用信号，优先选审稿快/出刊频率高的主攻刊，冲刺刊最多等一个短窗口。';
+  } else if (isSoloPhd) {
+    personaText = '博士独作策略：可冲一档，但普通高校作者别死等C刊；主攻和保底版本要提前改好。';
+  } else if (isLecturerPhd) {
+    personaText = '讲师申博/跳槽策略：优先保证可见成果，冲刺不超过一个审稿窗口，主攻刊兼顾速度与级别。';
+  } else if (isMasterWithSup) {
+    personaText = '硕士+导师策略：先确认署名/通讯作者，导师背书优先用于主攻层，保底层保持格式轻量。';
+  }
+
+  const angleRules = [
+    { label: '非遗/文化遗产', terms: ['非遗','非物质文化遗产','无形文化遗产','传统技艺','活态传承','传承人','文化遗产'], tip: '突出保护机制、传承谱系和地方经验' },
+    { label: '民俗/民族艺术', terms: ['民俗','民间','民族','少数民族','苗族','侗族','藏族','壮族','维吾尔','民族图案','民族服饰'], tip: '突出田野材料、族群文化和民间审美' },
+    { label: '设计/文创转化', terms: ['设计','文创','产品设计','视觉传达','包装','品牌','环境设计','交互','数字媒体'], tip: '突出设计方法、转化路径和应用场景' },
+    { label: '艺术教育/美育', terms: ['教育','教学','课程','美育','课堂','高校','艺术素养','非遗教育'], tip: '突出课程设计、教学过程和育人成效' },
+    { label: '美术/书法史论', terms: ['美术','绘画','中国画','油画','书法','篆书','碑学','篆刻','图像学'], tip: '突出图像细读、风格脉络和史论问题' },
+    { label: '美学/视觉文化', terms: ['美学','审美','视觉文化','图像','身份认同','文化记忆','观看'], tip: '突出理论框架、概念辨析和文本论证' }
+  ];
+
+  const paperText = getPaperText();
+  const matchedAngles = angleRules
+    .map(a => ({ ...a, hits: a.terms.filter(t => paperText.includes(t.toLowerCase())) }))
+    .filter(a => a.hits.length > 0)
+    .sort((a, b) => b.hits.length - a.hits.length)
+    .slice(0, 3);
+
+  const angleText = matchedAngles.length >= 2
+    ? '可拆成' + matchedAngles.map(a => a.label).join(' / ') + '三种角度；' + matchedAngles.slice(0, 2).map(a => a.tip).join('；') + '。'
+    : matchedAngles.length === 1
+      ? '主线角度：' + matchedAngles[0].label + '，' + matchedAngles[0].tip + '。'
+      : '角度建议：按目标刊栏目重写摘要首段，突出"研究对象+方法+贡献"。';
+
+  const inferVersionTip = item => {
+    if (!item || !item.journal) return '首投前先准备主攻版和保底版，避免被拒后临时大改。';
+    const j = item.journal;
+    const text = ((j.domains || []).join(' ') + ' ' + (j.keywords || []).join(' ') + ' ' + (j.columns || []).join(' ')).toLowerCase();
+    const col = (j.columns || [])[0];
+
+    let style = '';
+    if (/非遗|民俗|民族|田野|民间/.test(text)) style = '补足田野材料、地方语境和传承人/案例证据';
+    else if (/设计|文创|产品|视觉|环境|数字/.test(text)) style = '强化设计方法、流程图、应用场景和转化价值';
+    else if (/教育|教学|美育|课程/.test(text)) style = '补充课程目标、教学过程和效果反馈';
+    else if (/书法|篆刻|碑学|中国画|绘画|美术史|图像/.test(text)) style = '加强图像/作品细读、风格比较和史论脉络';
+    else if (/美学|理论|文艺|审美/.test(text)) style = '强化概念界定、理论问题和文献对话';
+    else style = '把摘要和小标题改成该刊常见栏目语言';
+
+    const lengthTip = j.avgArticleLength >= 10
+      ? '；该刊篇幅偏长，可扩展文献综述和案例分析'
+      : j.minPages
+        ? '；注意' + j.minPages + '版起发'
+        : '';
+
+    return (col ? '首选刊建议贴合《' + col + '》栏目，' : '首选刊建议') + style + lengthTip + '。';
+  };
+
+  let cumulative = 0;
+  const renderMiniCard = (item, idx, meta, isBackup) => {
+    if (!item || !item.journal) return '';
+    const j = item.journal;
+    const rd = getReviewDays(j);
+    const fee = getMaxFee(j.pageFee);
+    const feeText = fee.unknown ? '费待核' : fee.max === 0 ? '免费' : '约¥' + fee.max.toLocaleString('zh-CN');
+    const repText = j.reputation?.score !== undefined ? '口碑' + j.reputation.score : '口碑-';
+    const arText = j.wanweiReviewStats?.total >= 3 && j.wanweiReviewStats?.acceptanceRate !== undefined ? '录用' + j.wanweiReviewStats.acceptanceRate + '%' : '录用率-';
+    const risks = getRiskTags(item);
+    const riskHtml = risks.length > 0
+      ? risks.map(t => '<span style="display:inline-block;background:' + t.bg + ';color:' + t.color + ';padding:1px 5px;border-radius:8px;font-size:0.66rem;margin-left:3px;white-space:nowrap;">' + esc(t.text) + '</span>').join('')
+      : '<span style="color:#2e7d32;font-size:0.66rem;margin-left:3px;">风险低</span>';
+
+    return ''
+      + '<div style="background:#fff;border:1px solid #f0e4ce;border-radius:7px;padding:7px 9px;min-width:0;">'
+      + '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">'
+      + '<span style="background:' + (isBackup ? '#f5f5f5' : meta.bg) + ';color:' + (isBackup ? '#777' : meta.color) + ';padding:1px 6px;border-radius:8px;font-size:0.66rem;font-weight:700;">' + (isBackup ? '备选' : '首选') + '</span>'
+      + '<span style="font-weight:700;color:#2c2c2c;font-size:0.8rem;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(j.name) + '</span>'
+      + '<span style="color:#8b6914;font-size:0.68rem;">' + item.matchScore + '%</span>'
+      + '</div>'
+      + '<div style="margin-top:3px;font-size:0.67rem;color:#999;line-height:1.45;">'
+      + esc(repText) + ' · ' + esc(arText) + ' · 审稿' + fmtDays(rd) + ' · ' + esc(feeText)
+      + '</div>'
+      + '<div style="margin-top:3px;font-size:0.68rem;color:#666;line-height:1.45;">风险：' + riskHtml + '</div>'
       + '</div>';
   };
 
-  let html = '<div style=\"background:linear-gradient(135deg,#fdf8f0 0%,#faf5ff 100%);border:1px solid #e0d5c7;border-radius:10px;padding:14px 16px;margin:10px 0 16px;\">';
-  html += '<div style=\"font-weight:700;color:#8b6914;font-size:0.9rem;margin-bottom:12px;\">🗺️ 投稿策略建议</div>';
+  const tierRows = tierPicks.map((tier, idx) => {
+    const wait = tier.primary ? getSwitchDays(tier.primary, tier.key) : null;
+    const startText = idx === 0 ? '今天' : 'D+' + cumulative;
+    const actionText = tier.key === 'reach'
+      ? (urgentMode ? '最多等' + fmtDays(wait) + '，无信号即转主攻' : '无回复等' + fmtDays(wait) + '，拒稿当天转主攻')
+      : tier.key === 'match'
+        ? '等' + fmtDays(wait) + '无结果转保底'
+        : '收尾备选，优先选格式改动小者';
 
-  if (topReach.length > 0) {
-    html += '<div style=\"margin-bottom:10px;\"><span style=\"background:#ffebee;color:#c62828;padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:600;\">🎯 冲刺</span><span style=\"color:#999;font-size:0.72rem;margin-left:6px;\">匹配度高但竞争激烈，值得一试</span></div>';
-    html += topReach.map((r,i) => renderRow(r, i, 'reach')).join('');
-  }
+    if (tier.key !== 'safe' && wait) cumulative += wait;
 
-  if (topMatch.length > 0) {
-    html += '<div style=\"margin:10px 0 6px;\"><span style=\"background:#fff3e0;color:#e65100;padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:600;\">📌 主攻</span><span style=\"color:#999;font-size:0.72rem;margin-left:6px;\">匹配度与难度平衡，重点准备</span></div>';
-    html += topMatch.map((r,i) => renderRow(r, i, 'match')).join('');
-  }
+    return ''
+      + '<div style="display:grid;grid-template-columns:48px 1fr;gap:8px;padding:8px 0;border-top:' + (idx === 0 ? 'none' : '1px dashed #eadfce') + ';">'
+      + '<div style="text-align:center;">'
+      + '<div style="background:' + tier.meta.bg + ';color:' + tier.meta.color + ';border-radius:10px;font-size:0.72rem;font-weight:700;padding:2px 0;">' + tier.meta.label + '</div>'
+      + '<div style="font-size:0.67rem;color:#999;margin-top:3px;">' + startText + '</div>'
+      + '</div>'
+      + '<div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">'
+      + '<span style="font-size:0.72rem;color:#666;">⏱ ' + esc(actionText) + '</span>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px;">'
+      + renderMiniCard(tier.picks[0], 0, tier.meta, false)
+      + renderMiniCard(tier.picks[1], 1, tier.meta, true)
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
 
-  if (topSafe.length > 0) {
-    html += '<div style=\"margin:10px 0 6px;\"><span style=\"background:#e8f5e9;color:#2e7d32;padding:2px 10px;border-radius:10px;font-size:0.75rem;font-weight:600;\">🛡️ 保底</span><span style=\"color:#999;font-size:0.72rem;margin-left:6px;\">发表把握较大，确保有路可走</span></div>';
-    html += topSafe.map((r,i) => renderRow(r, i, 'safe')).join('');
-  }
+  const feeText = feePlanText(primaryPlan);
+  const firstChoice = primaryPlan[0];
+  const versionTip = inferVersionTip(firstChoice);
+  const deadlineText = urgentMode
+    ? '紧迫模式：按3个月内录用信号倒排'
+    : primaryPlan.length >= 2
+      ? '预计第' + fmtDays(cumulative || getSwitchDays(primaryPlan[0], 'reach')).replace('约', '') + '前完成首轮转投决策'
+      : '建议' + fmtDays(getSwitchDays(primaryPlan[0], 'match')) + '内无回复就主动问询';
 
-  html += '<div style=\"margin-top:10px;padding-top:8px;border-top:1px dashed #e0d5c7;font-size:0.73rem;color:#999;line-height:1.6;\">💡 建议按序投稿：先试冲刺→转投主攻→保底收尾。同一层内优先选审稿快的，避免同时一稿多投。</div>';
-  html += '</div>';
-  return html;
+  return ''
+    + '<div id="strategy-panel" style="background:linear-gradient(135deg,#fdf8f0 0%,#faf5ff 100%);border:1px solid #e0d5c7;border-radius:10px;padding:14px 16px;margin:10px 0 16px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap;">'
+    + '<div style="font-weight:700;color:#8b6914;font-size:0.92rem;">🗺️ 投稿行动方案</div>'
+    + '<div style="font-size:0.72rem;color:#999;">' + esc(deadlineText) + ' · 避免一稿多投</div>'
+    + '</div>'
+    + '<div style="font-size:0.76rem;color:#666;line-height:1.55;background:#fffaf2;border:1px solid #f0e4ce;border-radius:7px;padding:7px 10px;margin-bottom:8px;">'
+    + esc(personaText)
+    + '</div>'
+    + tierRows
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed #e0d5c7;font-size:0.72rem;color:#777;line-height:1.55;">'
+    + '<div>🧭 ' + esc(angleText) + '</div>'
+    + '<div>📝 ' + esc(versionTip) + '</div>'
+    + '<div>💰 ' + esc(feeText) + '；备选刊如需启用，投稿前再核实费用。</div>'
+    + '</div>'
+    + '</div>';
 }
 
 function renderResults(results) {
@@ -2353,13 +3009,43 @@ function renderResults(results) {
     blocked: { section: $('tier-blocked'), wrapper: $('tier-blocked-section') }
   };
 
+  const SAFE_VISIBLE_MAX = 12;
   let matchedCount = 0;
   let blockedCount = 0;
   for (const [tier, items] of Object.entries(grouped)) {
     if (items.length > 0) {
       labels[tier].wrapper.style.display = 'block';
-      for (const item of items) {
+      const toShow = (tier === 'safe' && items.length > SAFE_VISIBLE_MAX)
+        ? items.slice(0, SAFE_VISIBLE_MAX) : items;
+      const hidden = (tier === 'safe' && items.length > SAFE_VISIBLE_MAX)
+        ? items.slice(SAFE_VISIBLE_MAX) : [];
+      for (const item of toShow) {
         labels[tier].section.appendChild(buildJournalCard(item));
+      }
+      if (hidden.length > 0) {
+        const hiddenDiv = document.createElement('div');
+        hiddenDiv.id = 'safe-hidden';
+        hiddenDiv.style.display = 'none';
+        for (const item of hidden) {
+          hiddenDiv.appendChild(buildJournalCard(item));
+        }
+        labels[tier].section.appendChild(hiddenDiv);
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'safe-toggle';
+        toggleBtn.className = 'toggle-advanced';
+        toggleBtn.style.marginTop = '8px';
+        toggleBtn.textContent = '▸ 展开更多保底期刊（' + hidden.length + ' 本）';
+        toggleBtn.onclick = () => {
+          const hd = $('safe-hidden');
+          if (hd.style.display === 'none') {
+            hd.style.display = 'block';
+            toggleBtn.textContent = '▾ 收起';
+          } else {
+            hd.style.display = 'none';
+            toggleBtn.textContent = '▸ 展开更多保底期刊（' + hidden.length + ' 本）';
+          }
+        };
+        labels[tier].section.appendChild(toggleBtn);
       }
       if (tier === 'blocked') blockedCount += items.length;
       else matchedCount += items.length;
@@ -2378,7 +3064,7 @@ function renderResults(results) {
   if (existingStrategy) existingStrategy.remove();
 
   if (matchedCount > 0) {
-    const strategyHtml = buildStrategyPanel(grouped);
+    const strategyHtml = buildStrategyPanel(grouped, window.currentProfile);
     if (strategyHtml) {
       const strategyDiv = document.createElement('div');
       strategyDiv.id = 'strategy-panel';
@@ -2421,15 +3107,19 @@ function buildRecommendReasons(journal, item) {
     });
   }
 
-  // 维度 2：栏目对口（基于 columns 字段判断）
+  // 维度 2：栏目对口（只查原文，不用语义扩展）
   if (journal.columns && journal.columns.length > 0) {
     const matchedColumns = journal.columns.filter(col => {
       const colLower = col.toLowerCase();
       if (paperText.includes(colLower)) return true;
-      // 任一论文关键词与栏目名互含
-      for (const k of matchedKeywords) {
-        const kLower = k.toLowerCase();
-        if (colLower.includes(kLower) || kLower.includes(colLower)) return true;
+      // 长栏目：半字以上子串匹配
+      if (colLower.length >= 6) {
+        const minLen = Math.max(4, Math.ceil(colLower.length / 2));
+        for (let len = minLen; len <= colLower.length; len++) {
+          for (let i = 0; i <= colLower.length - len; i++) {
+            if (paperText.includes(colLower.substring(i, i + len))) return true;
+          }
+        }
       }
       return false;
     });
@@ -2488,7 +3178,7 @@ function buildRecommendReasons(journal, item) {
   // 维度 4：身份适配（优先用 authorDistribution 真实数据）
   if (profile.identity) {
     const id = profile.identity;
-    const supervisorAvailable = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
+    const supervisorConfirmed = profile.supervisor === 'yes' || profile.supervisor === 'maybe';
     const supervisorTail = profile.supervisor === 'maybe' ? '（待确认）' : '';
     let desc = '';
     let strength = 6;
@@ -2510,7 +3200,7 @@ function buildRecommendReasons(journal, item) {
         } else if (masterPct >= 20) {
           desc = `真实投稿中硕士占${masterPct}%，有一定空间`;
           strength = 6;
-        } else if (phdPct >= 70 && !supervisorAvailable) {
+        } else if (phdPct >= 70 && !supervisorConfirmed) {
           desc = `投稿以博士为主(${phdPct}%)，硕士独作难度较大`;
           strength = -2;
         }
@@ -2570,7 +3260,7 @@ function buildRecommendReasons(journal, item) {
         desc = '讲师身份符合该刊要求';
       } else if (id === '博士生' && (req.includes('博士') || req.includes('硕士'))) {
         desc = '博士独作可投';
-      } else if (id === '硕士生' && supervisorAvailable && req.includes('博士')) {
+      } else if (id === '硕士生' && supervisorConfirmed && req.includes('博士')) {
         desc = '硕士+导师挂名通讯，可挑战该刊' + supervisorTail;
       } else if (id === '硕士生' && req.includes('硕士')) {
         desc = '硕士独作可投';
@@ -2587,17 +3277,17 @@ function buildRecommendReasons(journal, item) {
     }
   }
 
-  // 维度 5：关键词命中（始终保留，强度取决于命中比例）
-  const totalKw = matchedKeywords.length + unmatchedKeywords.length;
-  if (totalKw > 0 && matchedKeywords.length > 0) {
-    const ratio = matchedKeywords.length / totalKw;
-    const hits = matchedKeywords.slice(0, 4);
-    const value = `命中 ${matchedKeywords.length}/${totalKw}：${hits.join('、')}${matchedKeywords.length > 4 ? '…' : ''}`;
+  // 维度 5：关键词命中
+  if (matchedKeywords.length > 0) {
+    const uniq = [...new Set(matchedKeywords.map(k => k.toLowerCase()))];
+    const hits = uniq.slice(0, 4);
+    const value = `匹配 ${uniq.length} 个：${hits.join('、')}${uniq.length > 4 ? '…' : ''}`;
+    const strength = Math.min(8, Math.round(uniq.length * 1.5) + 1);
     reasons.push({
       icon: '🔑',
       label: '关键词',
       value: value,
-      strength: Math.round(ratio * 8) + 1
+      strength: strength
     });
   }
 
@@ -2935,7 +3625,21 @@ function buildJournalCard(item) {
     }
   }
 
-  div.innerHTML = `
+    let cnkiKwHtml = "";
+  {
+    const arts = journal.cnkiArticles || [];
+    if (arts.length >= 3) {
+      const kwFreq = {};
+      arts.forEach(a => (a.keywords || "").split(";").map(k => k.trim()).filter(Boolean).forEach(k => { kwFreq[k] = (kwFreq[k] || 0) + 1; }));
+      const hot = Object.entries(kwFreq).filter(([, c]) => c >= 2).sort((a, b) => b[1] - a[1]).map(([k]) => k).slice(0, 12);
+      if (hot.length > 0) {
+        const matchedSet = new Set(matchedKeywords.map(k => k.toLowerCase()));
+        cnkiKwHtml = '<div style="margin-top:4px;font-size:0.73rem;color:#999;"><span style="color:#8b6914;font-weight:600;">📊 近3期热点</span> ' + hot.map(k => { const m = matchedSet.has(k.toLowerCase()); return '<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:8px;font-size:0.7rem;' + (m ? 'background:#e8f5e9;color:#2e7d32;font-weight:600' : 'background:#f5f5f5;color:#888;') + '">' + k + '</span>'; }).join("") + '</div>';
+      }
+    }
+  }
+
+div.innerHTML = `
     <div class="jc-header">
       <div>
         <span class="jc-name">${journal.name}</span><button class="jc-copy-btn" onclick="event.stopPropagation();copyJournalName(this,'${journal.name.replace(/'/g,"\\'")}')">📋 复制</button>
@@ -2943,7 +3647,7 @@ function buildJournalCard(item) {
       </div>
       <span class="jc-tier-tag ${tierTagClass[tier]}">${tierLabels[tier]}${(() => {
         const r = getDifficultyForUser(journal, window.currentProfile || {});
-        return r ? `<span style="font-size:0.7em;font-weight:400;opacity:0.85;margin-left:4px;">· 对你${getDifficultyStyle(r.difficulty).icon}${r.difficulty}</span>` : '';
+        return r ? `<span style="font-size:0.7em;font-weight:400;opacity:0.85;margin-left:4px;">· ${getDifficultyStyle(r.difficulty).label}</span>` : '';
       })()}</span>
     </div>
     <div class="jc-meta">
@@ -2953,7 +3657,7 @@ function buildJournalCard(item) {
       <span>💰 ${journal.pageFee || '无版面费'}</span>
       ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId ? `<a href="https://www.eshukan.com/displayj.aspx?jid=${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
     </div>
-    <div class="jc-keywords">${kwHtml}</div>
+    	    ${cnkiKwHtml ? cnkiKwHtml : '<div style="font-size:0.73rem;color:#999;margin-top:2px;">📋 收稿方向</div><div class="jc-keywords">'+kwHtml+'</div>'}
     ${(() => {
       const rep = journal.reputation;
       if (!rep || rep.score === undefined) return '';
@@ -2973,7 +3677,7 @@ function buildJournalCard(item) {
           const r = getDifficultyForUser(journal, window.currentProfile || {});
           if (!r) return '';
           const ds = getDifficultyStyle(r.difficulty);
-          return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 9px;background:${ds.tag};color:${ds.color};border-radius:10px;font-size:0.72rem;font-weight:600;">${ds.icon} 录用${r.difficulty}</span>`;
+          return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 9px;background:${ds.tag};color:${ds.color};border-radius:10px;font-size:0.72rem;font-weight:600;">${ds.icon} ${ds.label}</span>`;
         })()}
         <div class="match-bar">
           <span style="font-size:0.78rem;color:${matchColor};">匹配度</span>
@@ -3203,10 +3907,10 @@ function closeModal() {
 // ==================== 难度评估与建议生成（19B-1）====================
 
 function getDifficultyStyle(difficulty) {
-  if (difficulty === '友好') return { color: '#2e7d32', bg: '#e8f5e9', tag: '#c8e6c9', icon: '✓' };
-  if (difficulty === '可尝试') return { color: '#8b6914', bg: '#fff8e1', tag: '#fde7a3', icon: '○' };
-  if (difficulty === '较大') return { color: '#bf6c00', bg: '#fff3e0', tag: '#ffd180', icon: '⚠' };
-  return { color: '#c62828', bg: '#ffebee', tag: '#ffb3ba', icon: '⚠' };
+  if (difficulty === '友好') return { color: '#2e7d32', bg: '#e8f5e9', tag: '#c8e6c9', icon: '✓', label: '难度较低' };
+  if (difficulty === '可尝试') return { color: '#8b6914', bg: '#fff8e1', tag: '#fde7a3', icon: '○', label: '有一定难度' };
+  if (difficulty === '较大') return { color: '#bf6c00', bg: '#fff3e0', tag: '#ffd180', icon: '⚠', label: '难度较大' };
+  return { color: '#c62828', bg: '#ffebee', tag: '#ffb3ba', icon: '⚠', label: '难度很高' };
 }
 
 function generateAdvice(difficulty, id, supervisor, hasFunding, requiresFunding, journal) {
@@ -3931,6 +4635,18 @@ document.getElementById('filter-bar').addEventListener('click', function(e) {
   applyFiltersAndRender();
 });
 
+function toggleAdvanced() {
+  const el = $('advanced-fields');
+  const btn = $('toggle-advanced');
+  if (el.style.display === 'none') {
+    el.style.display = 'grid';
+    btn.innerHTML = '▾ 收起筛选条件';
+  } else {
+    el.style.display = 'none';
+    btn.innerHTML = '▸ 更多筛选条件（预算、时间、基金、省份…）';
+  }
+}
+
 function resetForm() {
   $('profile-identity').value = '';
   $('profile-budget').value = '';
@@ -3939,7 +4655,6 @@ function resetForm() {
   $('profile-funding').value = '';
   $('profile-language').value = '';
   $('profile-supervisor').value = '';
-  $('profile-discipline').value = '';
   $('profile-province').value = '';
   $('profile-unit-name').value = '';
   $('paper-title').value = '';
