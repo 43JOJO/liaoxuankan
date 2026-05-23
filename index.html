@@ -883,8 +883,9 @@ function extractPaperInfo(fullText, fileName) {
     },
   ];
 
-  // 后文标记：关键词区一旦撞上这些词，说明已越界进入正文/著录信息，就地截断
-  const KW_STOP = /(作者简介|作者单位|参考文献|引用格式|引文格式|基金项目|收稿日期|中图分类号?|文献标[识志]码|文章编号|DOI\b|引\s*言|前\s*言|绪\s*论|正\s*文|[一二三四五六七八九十]\s*[、．.])/i;
+  // 后文标记：除章节标题外，补上"正文特征"——书名号《、四位年份、句末标点、摘要——
+  // 因为很多论文关键词后直接接摘要/引言正文，没有章节标题做边界
+  const KW_STOP = /(作者简介|作者单位|参考文献|引用格式|引文格式|基金项目|收稿日期|中图分类号?|文献标[识志]码|文章编号|DOI\b|引\s*言|前\s*言|绪\s*论|正\s*文|摘\s*要|[一二三四五六七八九十]\s*[、．.]|《|\d{4}\s*年|[。！？])/i;
   for (const attempt of kwAttempts) {
     const result = attempt();
     if (result && result.trim().length > 2) {
@@ -902,8 +903,11 @@ function extractPaperInfo(fullText, fileName) {
         .replace(/[\.。\s]+$/, '')
         .trim();
       keywords = keywords.replace(/[：:]/g, ' ').replace(/[\.。\s]+$/, '').replace(/\s+/g, ' ').trim();
-      // 3) 硬上限 150 字兜底，并避免在词中间截断
-      if (keywords.length > 150) keywords = keywords.substring(0, 150).replace(/\s+\S*$/, '').trim();
+      // 3) token 数上限：关键词极少超过 12 个，超出即视为吞入正文，截断
+      let kwToks = keywords.split(/\s+/).filter(Boolean);
+      if (kwToks.length > 12) keywords = kwToks.slice(0, 12).join(' ');
+      // 4) 字数硬上限收紧到 60（关键词总长很少超过 60 字），避免在词中间截断
+      if (keywords.length > 60) keywords = keywords.substring(0, 60).replace(/\s+\S*$/, '').trim();
       break;
     }
   }
