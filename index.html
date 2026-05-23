@@ -1474,55 +1474,50 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
     else unmatchedKw.push(term);
   }
 
-  const coverageRatio = uniqueTerms.length > 0 ? hits / uniqueTerms.length : 0.3;
-  const coverageScore = coverageRatio * 45;
+  // 覆盖度改"绝对命中"：命中几个强相关词就给几分，不再被 DOMAIN_EN 词表大小稀释
+  // （艺术学词表 33 个，旧公式 hits/33 让艺术刊永远拿不到高分——主力场景全军覆没）
+  const coverageScore = Math.min(55, hits * 7);
 
-  // 精度加成：分词 token 直接命中期刊名或领域
+  // 中文领域直连：论文学科/中文正文命中该刊中文 domain → 主信号，使"只填中文"也能匹配
+  let cnDomainBoost = 0;
+  const cnText = toLower(paperText + ' ' + paperKeywords + ' ' + (discipline || ''));
+  for (const d of domains) {
+    if (discipline && (discipline.includes(d) || d.includes(discipline))) cnDomainBoost = Math.max(cnDomainBoost, 15);
+    else if (cnText.includes(toLower(d))) cnDomainBoost = Math.max(cnDomainBoost, 10);
+  }
+
+  // 精度加成：分词 token 命中期刊名
   let precisionBonus = 0;
   const journalName = toLower(journal.name || '');
   for (const t of tokens) {
-    if (t.length >= 4 && journalName.includes(t)) precisionBonus += 0.5;
+    if (t.length >= 4 && journalName.includes(t)) precisionBonus += 1.5;
   }
-  precisionBonus = Math.min(8, precisionBonus);
+  precisionBonus = Math.min(10, precisionBonus);
 
-  // 数据置信度：字段完整度
-  let confidence = 8;
-  if (!journal.reviewCycle || journal.reviewCycle.includes('待核实') || journal.reviewCycle.includes('未公开')) confidence -= 1;
-  if (!journal.pageFee || journal.pageFee.includes('待核实')) confidence -= 1;
-  if (!journal.officialSite) confidence -= 2;
-  if (!journal.frequency || journal.frequency === '待核实') confidence -= 1;
-  if (!journal.keywords || journal.keywords.length === 0) confidence -= 2;
-  confidence = Math.max(2, confidence);
+  // 元数据仅作小幅"可投性"加成（≤10），不再贡献 17–33 的无关底分
+  let meta = 0;
+  if (journal.wanweiId) meta += 4;            // 有万维页面=可公开投稿
+  if (journal.officialSite) meta += 3;
+  if (journal.pageFee && /免费|无APC|不收/.test(journal.pageFee)) meta += 3;
+  meta = Math.min(10, meta);
 
-  // 适配分
-  let adaptation = 15;
-  if (journal.wanweiId) adaptation += 3;       // 有万维页面 = 可公开投稿
-  if (journal.reviewCycle && !journal.reviewCycle.includes('待核实') && !journal.reviewCycle.includes('未公开')) adaptation += 2;
-  if (journal.pageFee && journal.pageFee.includes('免费')) adaptation += 2;
-  adaptation = Math.min(25, adaptation);
-
-  const total = coverageScore + precisionBonus + confidence + adaptation;
+  const total = coverageScore + cnDomainBoost + precisionBonus + meta;
   const score = Math.max(0, Math.min(100, Math.round(total)));
+  const coverageRatio = Math.min(1, hits / 8);  // 仅供 domainBoost/ratio 兼容字段使用
 
   return {
     score,
     matchedKeywords: matchedKw,
     unmatchedKeywords: unmatchedKw,
-    domainBoost: Math.round(coverageRatio * 20),
-    // 兼容中文格式的占位字段
+    domainBoost: Math.round((coverageScore + cnDomainBoost) * 0.3),
     ratio: coverageRatio,
     columnBoost: 0,
     userKwBoost: Math.round(precisionBonus),
     coverageScore: Math.round(coverageScore),
     precisionScore: Math.round(precisionBonus),
-    adaptationScore: Math.round(confidence + adaptation),
-    identityBoost: 0,
-    unitBoost: 0,
-    feeTransparency: 0,
-    transparencyPenalty: 0,
-    geoPenalty: 0,
-    titlePrecision: 0,
-    cnkiPrecision: 0
+    adaptationScore: Math.round(cnDomainBoost + meta),
+    identityBoost: 0, unitBoost: 0, feeTransparency: 0,
+    transparencyPenalty: 0, geoPenalty: 0, titlePrecision: 0, cnkiPrecision: 0
   };
 }
 
