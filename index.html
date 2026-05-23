@@ -517,15 +517,24 @@ footer {
   </div>
 
   <div class="form-grid">
-    <div class="form-group full">
+    <!-- 顶部模式切换：先选库，再填表 -->
+    <div class="form-group full" style="margin-bottom:2px;">
+      <input type="checkbox" id="ahci-mode" onchange="toggleAhciMode()" hidden>
+      <div style="display:inline-flex;border:1px solid #d9cfc0;border-radius:8px;overflow:hidden;font-size:0.85rem;">
+        <button type="button" id="mode-cn" onclick="setDbMode(false)" style="padding:7px 16px;border:none;background:#8b6914;color:#fff;cursor:pointer;font-weight:600;">中文期刊库</button>
+        <button type="button" id="mode-ahci" onclick="setDbMode(true)" style="padding:7px 16px;border:none;background:#fff;color:#666;cursor:pointer;">🌐 A&HCI 外文库</button>
+      </div>
+      <span id="ahci-hint" style="display:none;margin-left:10px;font-size:0.78rem;color:#8b6914;">匹配以<b>英文字段</b>为准，中文仅作参考（可不填）</span>
+    </div>
+    <div class="form-group full" id="cn-title">
       <label>论文标题</label>
       <input type="text" id="paper-title" placeholder="例：湘西苗族蜡染技艺的活态传承与文创转化研究">
     </div>
-    <div class="form-group full">
+    <div class="form-group full" id="cn-abstract">
       <label>摘要 / 核心内容 <span class="hint">· 粘贴摘要或概述核心观点</span></label>
       <textarea id="paper-abstract" rows="4" placeholder="简要描述论文的研究对象、方法、核心观点或结论……"></textarea>
     </div>
-    <div class="form-group full">
+    <div class="form-group full" id="cn-keywords">
       <label>关键词 <span class="hint">· 用空格或逗号分隔</span></label>
       <input type="text" id="paper-keywords" placeholder="例：苗族蜡染 非物质文化遗产 活态传承 文创设计">
     </div>
@@ -548,10 +557,6 @@ footer {
 <div class="btn-row" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
   <button class="btn btn-primary" id="btn-search">开始匹配期刊</button>
   <button class="btn btn-secondary" id="btn-reset">清空重填</button>
-  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;color:#666;user-select:none;margin-left:8px;">
-    <input type="checkbox" id="ahci-mode" onchange="toggleAhciMode()" style="width:16px;height:16px;cursor:pointer;">
-    🌐 A&HCI 外文模式
-  </label>
 </div>
 
 <!-- 可信度说明 -->
@@ -4844,14 +4849,43 @@ document.getElementById('filter-bar').addEventListener('click', function(e) {
   applyFiltersAndRender();
 });
 
+function setDbMode(useForeign) {
+  const cb = $('ahci-mode');
+  if (cb) cb.checked = !!useForeign;
+  toggleAhciMode();
+}
+
 function toggleAhciMode() {
-  const on = $('ahci-mode').checked;
-  ['ahci-english-title','ahci-english-abstract','ahci-english-keywords'].forEach(id => {
-    $(id).style.display = on ? 'flex' : 'none';
+  const on = $('ahci-mode') ? $('ahci-mode').checked : false;
+
+  // 顶部分段按钮高亮
+  const mc = $('mode-cn'), ma = $('mode-ahci');
+  if (mc && ma) {
+    mc.style.background = on ? '#fff' : '#8b6914';
+    mc.style.color = on ? '#666' : '#fff';
+    mc.style.fontWeight = on ? '400' : '600';
+    ma.style.background = on ? '#8b6914' : '#fff';
+    ma.style.color = on ? '#fff' : '#666';
+    ma.style.fontWeight = on ? '600' : '400';
+  }
+  if ($('ahci-hint')) $('ahci-hint').style.display = on ? 'inline' : 'none';
+
+  // 英文字段：外文模式显示并升为主字段（order 排到中文之前）
+  ['ahci-english-title','ahci-english-abstract','ahci-english-keywords'].forEach((id, i) => {
+    const el = $(id);
+    if (!el) return;
+    el.style.display = on ? 'flex' : 'none';
+    el.style.order = on ? (i + 1) : '';        // 1,2,3 → 最前
   });
-  // 中文论文区在 AHCI 模式下标注为参考
-  $('paper-title').placeholder = on ? '中文标题（参考）' : '例：湘西苗族蜡染技艺的活态传承与文创转化研究';
-  $('paper-abstract').placeholder = on ? '中文摘要（参考，非必填）' : '简要描述论文的研究对象、方法、核心观点或结论……';
+  // 中文字段：外文模式降为参考（order 排到英文之后）
+  ['cn-title','cn-abstract','cn-keywords'].forEach((id, i) => {
+    const el = $(id);
+    if (el) el.style.order = on ? (i + 10) : ''; // 10,11,12 → 英文之后
+  });
+
+  // 中文区占位文案标注为参考
+  $('paper-title').placeholder = on ? '中文标题（参考，可不填）' : '例：湘西苗族蜡染技艺的活态传承与文创转化研究';
+  $('paper-abstract').placeholder = on ? '中文摘要（参考，可不填）' : '简要描述论文的研究对象、方法、核心观点或结论……';
 }
 
 function toggleAdvanced() {
