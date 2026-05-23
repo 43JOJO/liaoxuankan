@@ -2711,9 +2711,10 @@ function doSearch() {
     if (useForeign) {
       // 外文匹配：computeMatchScoreForeign 替代 computeMatchScore
       match = computeMatchScoreForeign(foreignPaperText, paperKeywordsEn || paperKeywords, journal, currentDiscipline);
-      if (match.score >= 70)      tier = 'reach';
-      else if (match.score >= 50) tier = 'match';
-      else if (match.score >= 40) tier = 'safe';
+      // 外文分数比中文压缩，阈值相应下调，避免全部挤进 safe 一档
+      if (match.score >= 55)      tier = 'reach';
+      else if (match.score >= 40) tier = 'match';
+      else if (match.score >= 25) tier = 'safe';
       else continue;
       constraints = { warnings: [], blocked: false };
     } else {
@@ -2971,6 +2972,10 @@ function buildStrategyPanel(grouped, profile) {
       max += f.max;
     });
     const money = n => '¥' + n.toLocaleString('zh-CN');
+    // 外文：A&HCI 多为订阅制/混合 OA，APC 仅选 OA 时产生，金额各刊不一且常未公开；不套用中文"版面费/全中"口径
+    if (isForeignMode) {
+      return 'A&HCI 多为订阅制或混合 OA，APC 仅在选 OA 时产生，金额以各刊官网/Cost Finder 为准';
+    }
     if (max === 0 && unknown === 0) return '首选全中：预计0元版面费';
     if (unknown > 0 && max === 0) return '首选全中：费用待核实（' + unknown + '本未公开）';
     const range = min === max ? money(max) : money(min) + '–' + money(max);
@@ -3005,10 +3010,11 @@ function buildStrategyPanel(grouped, profile) {
     }
 
     const f = getMaxFee(j.pageFee);
-    if (f.unknown) tags.push({ text: '费待核', color: '#8b6914', bg: '#fff8e1' });
-    else if (f.max >= 5000) tags.push({ text: '费用高', color: '#e65100', bg: '#fff3e0' });
+    // 外文 APC 普遍未公开属正常，不作风险报警；仅中文版面费未核实才提示
+    if (f.max >= 5000) tags.push({ text: '费用高', color: '#e65100', bg: '#fff3e0' });
+    else if (f.unknown && !isForeignMode) tags.push({ text: '费待核', color: '#8b6914', bg: '#fff8e1' });
 
-    if (j.wanweiId && (j.wanweiReviews || []).length === 0) {
+    if (!isForeignMode && j.wanweiId && (j.wanweiReviews || []).length === 0) {
       tags.push({ text: '外投少', color: '#777', bg: '#f5f5f5' });
     }
 
@@ -3173,7 +3179,7 @@ function buildStrategyPanel(grouped, profile) {
     const j = item.journal;
     const rd = getReviewDays(j);
     const fee = getMaxFee(j.pageFee);
-    const feeText = fee.unknown ? '费待核' : fee.max === 0 ? '免费' : '约¥' + fee.max.toLocaleString('zh-CN');
+    const feeText = fee.unknown ? (isForeignMode ? 'APC见官网' : '费待核') : fee.max === 0 ? '免费' : '约¥' + fee.max.toLocaleString('zh-CN');
     const repText = j.reputation?.score !== undefined ? '口碑' + j.reputation.score : '口碑-';
     const arText = j.wanweiReviewStats?.total >= 3 && j.wanweiReviewStats?.acceptanceRate !== undefined ? '录用' + j.wanweiReviewStats.acceptanceRate + '%' : '录用率-';
     const risks = getRiskTags(item);
@@ -3226,11 +3232,13 @@ function buildStrategyPanel(grouped, profile) {
   const feeText = feePlanText(primaryPlan);
   const firstChoice = primaryPlan[0];
   const versionTip = inferVersionTip(firstChoice);
-  const deadlineText = urgentMode
-    ? '紧迫模式：按3个月内录用信号倒排'
-    : primaryPlan.length >= 2
-      ? '预计第' + fmtDays(cumulative || getSwitchDays(primaryPlan[0], 'reach')).replace('约', '') + '前完成首轮转投决策'
-      : '建议' + fmtDays(getSwitchDays(primaryPlan[0], 'match')) + '内无回复就主动问询';
+  const deadlineText = isForeignMode
+    ? '外刊审稿通常 2–6 个月，可先发 presubmission inquiry 询问适配度'
+    : urgentMode
+      ? '紧迫模式：按3个月内录用信号倒排'
+      : primaryPlan.length >= 2
+        ? '预计第' + fmtDays(cumulative || getSwitchDays(primaryPlan[0], 'reach')).replace('约', '') + '前完成首轮转投决策'
+        : '建议' + fmtDays(getSwitchDays(primaryPlan[0], 'match')) + '内无回复就主动问询';
 
   return ''
     + '<div id="strategy-panel" style="background:linear-gradient(135deg,#fdf8f0 0%,#faf5ff 100%);border:1px solid #e0d5c7;border-radius:10px;padding:14px 16px;margin:10px 0 16px;">'
