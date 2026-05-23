@@ -618,19 +618,19 @@ footer {
 
     <!-- 冲刺 -->
     <div id="tier-reach-section" style="display:none;">
-      <h4 style="color:#c62828;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#ffebee,#fff);border-left:4px solid #c62828;border-radius:4px;">🎯 冲刺 — 高影响力期刊，挑战较大</h4>
+      <h4 id="tier-reach-title" style="color:#c62828;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#ffebee,#fff);border-left:4px solid #c62828;border-radius:4px;">🎯 冲刺 — 高影响力期刊，挑战较大</h4>
       <div id="tier-reach"></div>
     </div>
 
     <!-- 匹配 -->
     <div id="tier-match-section" style="display:none;">
-      <h4 style="color:#1565c0;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#fff);border-left:4px solid #1565c0;border-radius:4px;">📌 匹配 — 方向对口，成功率较高</h4>
+      <h4 id="tier-match-title" style="color:#1565c0;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#fff);border-left:4px solid #1565c0;border-radius:4px;">📌 匹配 — 方向对口，成功率较高</h4>
       <div id="tier-match"></div>
     </div>
 
     <!-- 保底 -->
     <div id="tier-safe-section" style="display:none;">
-      <h4 style="color:#2e7d32;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#e8f5e9,#fff);border-left:4px solid #2e7d32;border-radius:4px;">🛡️ 保底 — 录用率高，稳妥之选</h4>
+      <h4 id="tier-safe-title" style="color:#2e7d32;font-size:0.95rem;margin:0 0 8px;padding:8px 12px;background:linear-gradient(90deg,#e8f5e9,#fff);border-left:4px solid #2e7d32;border-radius:4px;">🛡️ 保底 — 录用率高，稳妥之选</h4>
       <div id="tier-safe"></div>
     </div>
 
@@ -3046,7 +3046,12 @@ function buildStrategyPanel(grouped, profile) {
     .sort((a, b) => scoreItem(b, role) - scoreItem(a, role))
     .slice(0, n);
 
-  const tierMeta = {
+  const isForeignMode = (typeof window !== 'undefined' && window.isEnglishPaper);
+  const tierMeta = isForeignMode ? {
+    reach: { label: '高度契合', color: '#c62828', bg: '#ffebee', list: reach, role: 'reach', waitLabel: '首选' },
+    match: { label: '较契合', color: '#1565c0', bg: '#e3f2fd', list: match, role: 'match', waitLabel: '备选' },
+    safe:  { label: '范围相关', color: '#2e7d32', bg: '#e8f5e9', list: safe, role: 'safe', waitLabel: '拓展' }
+  } : {
     reach: { label: '冲刺', color: '#c62828', bg: '#ffebee', list: reach, role: 'reach', waitLabel: '首投' },
     match: { label: '主攻', color: '#1565c0', bg: '#e3f2fd', list: match, role: 'match', waitLabel: '转投' },
     safe:  { label: '保底', color: '#2e7d32', bg: '#e8f5e9', list: safe, role: 'safe', waitLabel: '保底' }
@@ -3264,6 +3269,21 @@ function renderResults(results) {
     blocked: { section: $('tier-blocked'), wrapper: $('tier-blocked-section') }
   };
 
+  // 区块标题按模式切换：外文不再写"录用率高/稳妥之选"（A&HCI 是国际硬刊，会造成虚假安全感）
+  const _foreign = (typeof window !== 'undefined' && window.isEnglishPaper);
+  const _titles = _foreign ? {
+    reach: '🎯 高度契合 — 选题高度对口（A&HCI 收录，仍为国际硬刊）',
+    match: '📌 较契合 — 方向相关，可重点考虑',
+    safe:  '🧭 范围相关 — 选题外围，作拓展投稿参考'
+  } : {
+    reach: '🎯 冲刺 — 高影响力期刊，挑战较大',
+    match: '📌 匹配 — 方向对口，成功率较高',
+    safe:  '🛡️ 保底 — 录用率高，稳妥之选'
+  };
+  if ($('tier-reach-title')) $('tier-reach-title').textContent = _titles.reach;
+  if ($('tier-match-title')) $('tier-match-title').textContent = _titles.match;
+  if ($('tier-safe-title')) $('tier-safe-title').textContent = _titles.safe;
+
   const SAFE_VISIBLE_MAX = 12;
   let matchedCount = 0;
   let blockedCount = 0;
@@ -3352,6 +3372,30 @@ function buildRecommendReasons(journal, item) {
   const domainBoost = item.domainBoost || 0;
   const profile = window.currentProfile || {};
   const paperText = window.currentPaperText || '';
+  const isForeign = journal.catalogLevel === 'A&HCI';
+
+  // 外文刊：keywords 为空、匹配来自共享的 DOMAIN_EN 领域词表，
+  // 直接展示会导致同领域每本刊"命中关键词"一字不差。改用刊物自身信息（逐刊不同）。
+  if (isForeign) {
+    const empt = v => !v || /未公开|待核实|不适用|未明示/.test(v);
+    // 期刊方向（中译名/英文名）——逐刊不同，区分 Camera Obscura 与 Sight and Sound
+    const dir = journal.nameZh || journal.name;
+    if (dir) reasons.push({ icon: '🧭', label: '期刊方向', value: dir, strength: 14 });
+    // 学科领域（单行，非领域词复读）
+    if (journal.domains && journal.domains.length > 0) {
+      reasons.push({ icon: '🎯', label: '学科领域', value: journal.domains.slice(0, 3).join(' · '), strength: 10 });
+    }
+    // A&HCI 收录 = 可信度理由
+    reasons.push({ icon: '✅', label: '收录', value: 'A&HCI（艺术与人文引文索引）', strength: 9 });
+    // 收稿方式 / 获取方式（仅当有非占位说明时）
+    if (!empt(journal.authorRequirement)) {
+      reasons.push({ icon: '📝', label: '收稿', value: String(journal.authorRequirement).slice(0, 40), strength: 6 });
+    } else if (!empt(journal.oaType)) {
+      reasons.push({ icon: '🔓', label: '获取方式', value: String(journal.oaType).slice(0, 40), strength: 4 });
+    }
+    // 不复读领域词、不展示身份/独作/费待核，外文这些维度无意义或会误导
+    return reasons;
+  }
 
   // 维度 1：领域强对口
   if (domainBoost >= 10 && journal.domains && journal.domains.length > 0) {
@@ -3818,7 +3862,7 @@ function buildJournalCard(item) {
 
   const isForeign = journal.catalogLevel === 'A&HCI';
   const tierLabels = isForeign
-    ? { reach: '高度匹配', match: '中度匹配', safe: '弱匹配', blocked: '不匹配' }
+    ? { reach: '高度契合', match: '较契合', safe: '范围相关', blocked: '不匹配' }
     : { reach: '冲刺', match: '匹配', safe: '保底', blocked: '不匹配' };
   const tierTagClass = { reach: 'tier-tag-reach', match: 'tier-tag-match', safe: 'tier-tag-safe', blocked: 'tier-tag-blocked' };
 
@@ -3955,7 +3999,7 @@ div.innerHTML = `
 function showDetail(journal, item) {
   const isForeign = journal.catalogLevel === 'A&HCI';
   const tierLabels = isForeign
-    ? { reach: '高度匹配', match: '中度匹配', safe: '弱匹配', blocked: '不匹配' }
+    ? { reach: '高度契合', match: '较契合', safe: '范围相关', blocked: '不匹配' }
     : { reach: '冲刺', match: '匹配', safe: '保底', blocked: '不匹配' };
   const tier = item ? item.tier : 'match';
   const tierTagMap = { reach: 'tier-tag-reach', match: 'tier-tag-match', safe: 'tier-tag-safe', blocked: 'tier-tag-blocked' };
