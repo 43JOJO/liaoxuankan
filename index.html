@@ -529,12 +529,16 @@ footer {
       <label>关键词 <span class="hint">· 用空格或逗号分隔</span></label>
       <input type="text" id="paper-keywords" placeholder="例：苗族蜡染 非物质文化遗产 活态传承 文创设计">
     </div>
-    <div class="form-group full" id="ahci-english-fields" style="display:none;">
-      <label>English Title <span class="hint">· 英文标题（可选）</span></label>
+    <div class="form-group full" id="ahci-english-title" style="display:none;">
+      <label>English Title <span class="hint">· 英文标题</span></label>
       <input type="text" id="paper-title-en" placeholder="e.g. The Aesthetics of Seal Script in Han Dynasty Stone Inscriptions">
     </div>
+    <div class="form-group full" id="ahci-english-abstract" style="display:none;">
+      <label>English Abstract <span class="hint">· 英文摘要</span></label>
+      <textarea id="paper-abstract-en" rows="3" placeholder="e.g. This paper examines the evolution of seal script aesthetics..."></textarea>
+    </div>
     <div class="form-group full" id="ahci-english-keywords" style="display:none;">
-      <label>English Keywords <span class="hint">· 英文关键词（可选，用逗号或空格分隔）</span></label>
+      <label>English Keywords <span class="hint">· 英文关键词（逗号或空格分隔）</span></label>
       <input type="text" id="paper-keywords-en" placeholder="e.g. seal script, calligraphy, Han dynasty, cultural memory">
     </div>
   </div>
@@ -1411,15 +1415,15 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
 
   // 中→英领域词典
   const DOMAIN_EN = {
-    '建筑学': ['architecture','architectural','urban','building','landscape','housing','planning'],
-    '设计学': ['design','graphic','industrial','fashion','textile','typography','visual communication','product design'],
-    '艺术学': ['art','art history','visual art','fine art','painting','sculpture','photography','aesthetics','contemporary art','modern art','iconography'],
-    '影视学': ['film','cinema','media','television','screen','moving image','audiovisual','digital media'],
-    '音乐学': ['music','musicology','ethnomusicology','opera','sound','composition','performance'],
-    '舞蹈学': ['dance','choreography','ballet','performance','movement'],
-    '博物馆学': ['museum','museology','curation','curatorial','exhibition'],
-    '考古学': ['archaeology','archaeological','antiquity','material culture','excavation','artifact','ancient'],
-    '文化遗产': ['heritage','cultural heritage','conservation','preservation','cultural property']
+    '建筑学': ['architecture','architectural','urban','building','landscape','housing','planning','spatial','built environment'],
+    '设计学': ['design','graphic','industrial','fashion','textile','typography','visual communication','product design','interior design'],
+    '艺术学': ['art','art history','visual art','fine art','painting','sculpture','photography','aesthetics','contemporary art','modern art','iconography','calligraphy','seal script','ink painting','chinese painting','asian art','chinese art','east asian art','buddhist art','printmaking','drawing','decorative arts','craft','ceramics','ceramic','textile art','peasant','farmer','folk art','rural art','vernacular','artisan','handicraft'],
+    '影视学': ['film','cinema','media','television','screen','moving image','audiovisual','digital media','documentary','animation','digital','generative','AI','artificial intelligence','technology','innovation'],
+    '音乐学': ['music','musicology','ethnomusicology','opera','sound','composition','performance','musical','orchestra'],
+    '舞蹈学': ['dance','choreography','ballet','performance','movement','theater','theatre'],
+    '博物馆学': ['museum','museology','curation','curatorial','exhibition','gallery','collecting','collection'],
+    '考古学': ['archaeology','archaeological','antiquity','material culture','excavation','artifact','ancient','prehistoric','bronze','dynasty','han dynasty','tang dynasty','ming dynasty','qing dynasty','song dynasty'],
+    '文化遗产': ['heritage','cultural heritage','conservation','preservation','cultural property','intangible','world heritage','restoration','traditional','folk','folklore','peasant','farmer','rural economy','community']
   };
 
   // 扩展期刊词项：中文 domain → 英文关键词 + 刊名拆词
@@ -1434,8 +1438,9 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
   }
   // 加入已有 keywords
   keywords.forEach(k => journalTerms.push(toLower(k)));
-  // 从刊名提取英文词 (拆掉标点)
-  const nameWords = toLower(journal.name || '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4);
+  // 从刊名提取英文词 (拆掉标点，过滤虚词)
+  const STOP_EN = new Set(['the','and','for','its','with','from','into','over','that','this','than','about','journal','review','studies','study','research','quarterly','annual','international','bulletin','proceedings','transactions']);
+  const nameWords = toLower(journal.name || '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !STOP_EN.has(w));
   nameWords.forEach(w => journalTerms.push(w));
   // 去重
   const uniqueTerms = [...new Set(journalTerms.filter(t => t.length >= 2))];
@@ -2616,7 +2621,7 @@ function doSearch() {
   const paperAbstract = $('paper-abstract').value.trim();
   const paperKeywords = $('paper-keywords').value.trim();
 
-  if (!paperTitle && !paperAbstract && !paperKeywords && !paperTitleEn && !paperKeywordsEn) {
+  if (!paperTitle && !paperAbstract && !paperKeywords && !paperTitleEn && !paperAbstractEn && !paperKeywordsEn) {
     alert('请至少填写论文标题、摘要或关键词之一');
     return;
   }
@@ -2624,6 +2629,7 @@ function doSearch() {
   // AHCI 外文模式：手动开关 + 自动检测
   const ahciMode = $('ahci-mode') ? $('ahci-mode').checked : false;
   const paperTitleEn = ($('paper-title-en')?.value || '').trim();
+  const paperAbstractEn = ($('paper-abstract-en')?.value || '').trim();
   const paperKeywordsEn = ($('paper-keywords-en')?.value || '').trim();
 
   const paperText = paperTitle + ' ' + paperAbstract;
@@ -2634,7 +2640,7 @@ function doSearch() {
   const isEnglish = engChars > chnChars * 2 || (chnChars === 0 && engChars > 20);
   const useForeign = (ahciMode || isEnglish) && typeof foreignJournalDatabase !== 'undefined';
   // 外文匹配用合并文本（中文原文 + 英文标题/关键词）
-  const foreignPaperText = paperText + ' ' + paperTitleEn + ' ' + paperKeywordsEn;
+  const foreignPaperText = paperText + ' ' + paperTitleEn + ' ' + paperAbstractEn + ' ' + paperKeywordsEn;
   const activeDatabase = useForeign ? foreignJournalDatabase : journalDatabase;
   window.isEnglishPaper = useForeign;
   if (useForeign && typeof foreignJournalDatabase !== 'undefined') {
@@ -2651,7 +2657,7 @@ function doSearch() {
       match = computeMatchScoreForeign(foreignPaperText, paperKeywordsEn || paperKeywords, journal, currentDiscipline);
       if (match.score >= 70)      tier = 'reach';
       else if (match.score >= 50) tier = 'match';
-      else if (match.score >= 30) tier = 'safe';
+      else if (match.score >= 40) tier = 'safe';
       else continue;
       constraints = { warnings: [], blocked: false };
     } else {
@@ -2698,8 +2704,8 @@ function doSearch() {
 
   applyFiltersAndRender();
 
-  // 学报推荐
-  buildXuebaoRecommendations(profile);
+  // 学报推荐（仅中文模式）
+  if (!useForeign) buildXuebaoRecommendations(profile);
 }
 
 // 获取期刊的筛选标签值（映射 catalogLevel 到筛选类别）
@@ -3717,7 +3723,10 @@ function buildJournalCard(item) {
   div.className = `journal-card tier-${tier}`;
   div.addEventListener('click', () => showDetail(journal, item));
 
-  const tierLabels = { reach: '冲刺', match: '匹配', safe: '保底', blocked: '不匹配' };
+  const isForeign = journal.catalogLevel === 'A&HCI';
+  const tierLabels = isForeign
+    ? { reach: '高度匹配', match: '中度匹配', safe: '弱匹配', blocked: '不匹配' }
+    : { reach: '冲刺', match: '匹配', safe: '保底', blocked: '不匹配' };
   const tierTagClass = { reach: 'tier-tag-reach', match: 'tier-tag-match', safe: 'tier-tag-safe', blocked: 'tier-tag-blocked' };
 
   // 级别徽章（基于 catalogLevel）
@@ -3799,22 +3808,22 @@ function buildJournalCard(item) {
 div.innerHTML = `
     <div class="jc-header">
       <div>
-        <span class="jc-name">${journal.name}</span><button class="jc-copy-btn" onclick="event.stopPropagation();copyJournalName(this,'${journal.name.replace(/'/g,"\\'")}')">📋 复制</button>
+        <span class="jc-name">${journal.nameZh ? `<span style=\"font-weight:600;\">${journal.nameZh}</span><br><span style=\"font-size:0.78rem;color:#888;font-weight:400;\">${journal.name}</span>` : journal.name}</span><button class="jc-copy-btn" onclick="event.stopPropagation();copyJournalName(this,'${journal.name.replace(/'/g,"\\'")}')">📋 复制</button>
         <span class="jc-level">${levelBadge} ${freqBadge}</span>
       </div>
-      <span class="jc-tier-tag ${tierTagClass[tier]}">${tierLabels[tier]}${(() => {
+      <span class="jc-tier-tag ${tierTagClass[tier]}">${tierLabels[tier]}${!isForeign ? (() => {
         const r = getDifficultyForUser(journal, window.currentProfile || {});
         return r ? `<span style="font-size:0.7em;font-weight:400;opacity:0.85;margin-left:4px;">· ${getDifficultyStyle(r.difficulty).label}</span>` : '';
-      })()}</span>
+      })() : ''}</span>
     </div>
     <div class="jc-meta">
       ${(() => { const st = journal.wanweiReviewStats; if (st && st.reviewTimeAvg) { const d = st.reviewTimeAvg; return `<span>📄 审稿 ~${d >= 60 ? Math.round(d/30) + '个月' : d + '天'}</span>`; } return journal.reviewCycle ? `<span>📄 审稿 ${journal.reviewCycle}</span>` : ''; })()}
       ${journal.articlesPerIssue ? `<span>📖 约${journal.articlesPerIssue}篇/期</span>` : ''}
       ${journal.minPages ? `<span>📝 ${journal.minPages}版起发${journal.charsPerPage ? ' · ' + journal.charsPerPage : ''}</span>` : ''}
       <span>💰 ${journal.pageFee || '无版面费'}</span>
-      ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId ? `<a href="https://www.eshukan.com/displayj.aspx?jid=${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
+      ${journal.submissionMethod === '邮箱投稿' ? '<span>📧 邮箱投稿</span>' : '<span>🌐 在线投稿</span>'}      ${journal.wanweiId && (journal.wanweiReviews||[]).length > 0 ? `<a href="https://www.eshukan.com/displayj.aspx?jid=${journal.wanweiId}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;padding:1px 8px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:0.75rem;text-decoration:none;" title="在万维书刊网查看点评">💬 ${(journal.wanweiReviews||[]).length}条点评</a>` : ''}
     </div>
-    	    ${cnkiKwHtml ? cnkiKwHtml : '<div style="font-size:0.73rem;color:#999;margin-top:2px;">📋 收稿方向</div><div class="jc-keywords">'+kwHtml+'</div>'}
+    	    ${cnkiKwHtml ? cnkiKwHtml : (isForeign ? '' : '<div style="font-size:0.73rem;color:#999;margin-top:2px;">📋 收稿方向</div><div class="jc-keywords">'+kwHtml+'</div>')}
     ${(() => {
       const rep = journal.reputation;
       if (!rep || rep.score === undefined) return '';
@@ -3830,12 +3839,12 @@ div.innerHTML = `
     <div class="jc-footer">
       <span style="font-size:0.78rem;color:#999;">点击查看详情 →</span>
       <div style="display:flex;align-items:center;gap:10px;">
-        ${(() => {
+        ${!isForeign ? (() => {
           const r = getDifficultyForUser(journal, window.currentProfile || {});
           if (!r) return '';
           const ds = getDifficultyStyle(r.difficulty);
           return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 9px;background:${ds.tag};color:${ds.color};border-radius:10px;font-size:0.72rem;font-weight:600;">${ds.icon} ${ds.label}</span>`;
-        })()}
+        })() : ''}
         <div class="match-bar">
           <span style="font-size:0.78rem;color:${matchColor};">匹配度</span>
           <div class="match-bar-track">
@@ -3851,13 +3860,16 @@ div.innerHTML = `
 }
 
 function showDetail(journal, item) {
-  const tierLabels = { reach: '冲刺', match: '匹配', safe: '保底', blocked: '不匹配' };
+  const isForeign = journal.catalogLevel === 'A&HCI';
+  const tierLabels = isForeign
+    ? { reach: '高度匹配', match: '中度匹配', safe: '弱匹配', blocked: '不匹配' }
+    : { reach: '冲刺', match: '匹配', safe: '保底', blocked: '不匹配' };
   const tier = item ? item.tier : 'match';
   const tierTagMap = { reach: 'tier-tag-reach', match: 'tier-tag-match', safe: 'tier-tag-safe', blocked: 'tier-tag-blocked' };
 
   modalContent.innerHTML = `
     <button class="modal-close" onclick="closeModal()">×</button>
-    <h3>${journal.name}</h3>
+    <h3>${journal.nameZh ? journal.nameZh + '<br><span style=\"font-size:0.85rem;color:#888;font-weight:400;\">' + journal.name + '</span>' : journal.name}</h3>
     <span class="jc-tier-tag ${tierTagMap[tier] || 'tier-tag-safe'}" style="margin-bottom:12px;">推荐层级：${tierLabels[tier] || '-'}</span>
 
     <!-- 数据时效横条（新增）-->
@@ -4794,8 +4806,12 @@ document.getElementById('filter-bar').addEventListener('click', function(e) {
 
 function toggleAhciMode() {
   const on = $('ahci-mode').checked;
-  $('ahci-english-fields').style.display = on ? 'flex' : 'none';
-  $('ahci-english-keywords').style.display = on ? 'flex' : 'none';
+  ['ahci-english-title','ahci-english-abstract','ahci-english-keywords'].forEach(id => {
+    $(id).style.display = on ? 'flex' : 'none';
+  });
+  // 中文论文区在 AHCI 模式下标注为参考
+  $('paper-title').placeholder = on ? '中文标题（参考）' : '例：湘西苗族蜡染技艺的活态传承与文创转化研究';
+  $('paper-abstract').placeholder = on ? '中文摘要（参考，非必填）' : '简要描述论文的研究对象、方法、核心观点或结论……';
 }
 
 function toggleAdvanced() {
@@ -4824,6 +4840,7 @@ function resetForm() {
   $('paper-abstract').value = '';
   $('paper-keywords').value = '';
   if ($('paper-title-en')) $('paper-title-en').value = '';
+  if ($('paper-abstract-en')) $('paper-abstract-en').value = '';
   if ($('paper-keywords-en')) $('paper-keywords-en').value = '';
   if ($('ahci-mode')) { $('ahci-mode').checked = false; toggleAhciMode(); }
   resultsSection.style.display = 'none';
