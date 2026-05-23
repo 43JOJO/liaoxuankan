@@ -1643,7 +1643,7 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   }
 
   const coverageRatio = totalWeight > 0 ? clamp(coveredWeight / totalWeight, 0, 1) : 0;
-  const coverageScore = coverageRatio * 40;
+  const coverageScore = clamp(coveredWeight * 2.2, 0, 40);
 
   // ==================== 模块二：精度加成 0-20 ====================
   let titlePrecision = 0;
@@ -1932,21 +1932,17 @@ function computeMatchScore(paperText, paperKeywords, journal, discipline) {
   };
 
   const paperLower = allText;
-  const journalLower = toLower(
-    (journal.name || '') + ' ' +
-    journalKeywords.join(' ') + ' ' +
-    journalDomains.join(' ') + ' ' +
-    journalColumns.join(' ')
-  );
+  const journalNameLower = toLower(journal.name || '');
+  const isNationalName = /中国|全国|民族|华夏|中华/.test(journal.name || '');
 
   let paperRegion = null;
   let journalRegion = null;
   for (const [region, terms] of Object.entries(geoRegions)) {
     if (!paperRegion && terms.some(t => paperLower.includes(toLower(t)))) paperRegion = region;
-    if (!journalRegion && terms.some(t => journalLower.includes(toLower(t)))) journalRegion = region;
+    if (!journalRegion && terms.some(t => journalNameLower.includes(toLower(t)))) journalRegion = region;
   }
-  if (paperRegion && journalRegion && paperRegion !== journalRegion) {
-    geoPenalty = -6;
+  if (paperRegion && journalRegion && paperRegion !== journalRegion && !isNationalName) {
+    geoPenalty = -3;
   }
 
   const adaptationRaw =
@@ -2290,6 +2286,7 @@ function determineTier(matchScore, journal) {
   if ((isEntry || isExtended) && matchScore >= 25) return adjusted('safe');
   // 兜底
   if (matchScore >= 30 && ease >= 50) return adjusted('safe');
+  if (isCore && matchScore >= 30) return adjusted('safe');
 
   return null;
 }
@@ -2620,17 +2617,17 @@ function doSearch() {
   const paperTitle = $('paper-title').value.trim();
   const paperAbstract = $('paper-abstract').value.trim();
   const paperKeywords = $('paper-keywords').value.trim();
+  const paperTitleEn = ($('paper-title-en')?.value || '').trim();
+  const paperAbstractEn = ($('paper-abstract-en')?.value || '').trim();
+  const paperKeywordsEn = ($('paper-keywords-en')?.value || '').trim();
 
   if (!paperTitle && !paperAbstract && !paperKeywords && !paperTitleEn && !paperAbstractEn && !paperKeywordsEn) {
-    alert('请至少填写论文标题、摘要或关键词之一');
+    alert('请至少填写论文标题、摘要或关键词（含英文）');
     return;
   }
 
   // AHCI 外文模式：手动开关 + 自动检测
   const ahciMode = $('ahci-mode') ? $('ahci-mode').checked : false;
-  const paperTitleEn = ($('paper-title-en')?.value || '').trim();
-  const paperAbstractEn = ($('paper-abstract-en')?.value || '').trim();
-  const paperKeywordsEn = ($('paper-keywords-en')?.value || '').trim();
 
   const paperText = paperTitle + ' ' + paperAbstract;
 
@@ -2884,10 +2881,10 @@ function buildStrategyPanel(grouped, profile) {
 
     if (urgentMode) {
       const urgentCap = tierKey === 'reach' ? 35 : tierKey === 'match' ? 28 : 21;
-      return Math.round(clamp(raw * 0.65, 14, urgentCap));
+      return Math.round(clamp(raw * 0.65 * timingMult, 14, urgentCap));
     }
 
-    const multiplier = tierKey === 'reach' ? 1.15 : tierKey === 'match' ? 1.05 : 1;
+    const multiplier = (tierKey === 'reach' ? 1.15 : tierKey === 'match' ? 1.05 : 1) * timingMult;
     return Math.round(clamp(raw * multiplier, 21, tierKey === 'reach' ? 90 : tierKey === 'match' ? 75 : 60));
   };
 
@@ -2986,7 +2983,7 @@ function buildStrategyPanel(grouped, profile) {
   };
 
   const pickBest = (list, n, role) => [...list]
-    .filter(r => r && r.journal && r.matchScore >= 25)
+    .filter(r => r && r.journal && r.matchScore >= 15)
     .sort((a, b) => scoreItem(b, role) - scoreItem(a, role))
     .slice(0, n);
 
@@ -2996,31 +2993,69 @@ function buildStrategyPanel(grouped, profile) {
     safe:  { label: '保底', color: '#2e7d32', bg: '#e8f5e9', list: safe, role: 'safe', waitLabel: '保底' }
   };
 
+  const isSoloBachelor = p.identity === '本科生' && p.supervisor !== 'yes' && p.supervisor !== 'maybe';
+  const isBachelorWithSup = p.identity === '本科生' && (p.supervisor === 'yes' || p.supervisor === 'maybe');
+  const isSoloMaster = p.identity === '硕士生' && p.supervisor !== 'yes' && p.supervisor !== 'maybe';
+  const isMasterWithSup = p.identity === '硕士生' && (p.supervisor === 'yes' || p.supervisor === 'maybe');
+  const isSoloPhd = (p.identity === '博士生' || p.identity === '博士') && p.supervisor !== 'yes' && p.supervisor !== 'maybe';
+  const isPhdWithSup = (p.identity === '博士生' || p.identity === '博士') && (p.supervisor === 'yes' || p.supervisor === 'maybe');
+  const isLecturer = p.identity === '讲师';
+  const isLecturerPhd = p.identity === '讲师' && (!p.degree || p.degree === '博士');
+  const isAssociateProf = p.identity === '副教授';
+  const isProf = p.identity === '教授';
+  const isPostdoc = p.identity === '博士后';
+
+  const pickCounts = isSoloBachelor || isSoloMaster ? { reach: 1, match: 2, safe: 3 }
+    : isSoloPhd ? { reach: 1, match: 3, safe: 3 }
+    : (isPhdWithSup || isMasterWithSup || isBachelorWithSup) ? { reach: 2, match: 3, safe: 3 }
+    : isPostdoc ? { reach: 1, match: 3, safe: 2 }
+    : (isAssociateProf || isProf) ? { reach: 3, match: 2, safe: 1 }
+    : isLecturer ? { reach: 2, match: 3, safe: 2 }
+    : { reach: 2, match: 2, safe: 2 };
+
+  const timingMult = isSoloBachelor || isSoloMaster ? 1.4
+    : isSoloPhd ? 1.25
+    : (isProf || isAssociateProf) ? 0.7
+    : 1.0;
+
   const tierPicks = ['reach', 'match', 'safe']
     .map(key => {
       const meta = tierMeta[key];
-      const picks = pickBest(meta.list, 2, meta.role);
-      return { key, meta, picks, primary: picks[0] || null, backup: picks[1] || null };
+      const n = pickCounts[meta.role] || 2;
+      const picks = pickBest(meta.list, n, meta.role);
+      return { key, meta, picks };
     })
     .filter(x => x.picks.length > 0);
 
   if (tierPicks.length === 0) return '';
 
-  const primaryPlan = tierPicks.map(x => x.primary).filter(Boolean);
-
-  const isSoloPhd = (p.identity === '博士生' || p.identity === '博士') && p.supervisor !== 'yes' && p.supervisor !== 'maybe';
-  const isLecturerPhd = p.identity === '讲师' && (!p.degree || p.degree === '博士');
-  const isMasterWithSup = p.identity === '硕士生' && (p.supervisor === 'yes' || p.supervisor === 'maybe');
+  const primaryPlan = tierPicks.map(x => x.picks[0]).filter(Boolean);
 
   let personaText = '建议采用单篇顺序投稿：首投最有价值的一本，同时备好主攻和保底版本。';
   if (urgentMode) {
     personaText = '紧迫模式：目标3个月内见录用信号，优先选审稿快/出刊频率高的主攻刊，冲刺刊最多等一个短窗口。';
-  } else if (isSoloPhd) {
-    personaText = '博士独作策略：可冲一档，但普通高校作者别死等C刊；主攻和保底版本要提前改好。';
-  } else if (isLecturerPhd) {
-    personaText = '讲师申博/跳槽策略：优先保证可见成果，冲刺不超过一个审稿窗口，主攻刊兼顾速度与级别。';
+  } else if (isSoloBachelor) {
+    personaText = '本科生独作策略：核心期刊难度极大，主攻普刊和AMI入库刊；有导师背书可提高一档。';
+  } else if (isBachelorWithSup) {
+    personaText = '本科生+导师策略：导师通讯作者可提高录用率，冲刺需确认导师署名意愿。';
+  } else if (isSoloMaster) {
+    personaText = '硕士独作策略：避开C刊/北核刚需，主攻AMI核心/扩展，保底选审稿快的普刊。';
   } else if (isMasterWithSup) {
     personaText = '硕士+导师策略：先确认署名/通讯作者，导师背书优先用于主攻层，保底层保持格式轻量。';
+  } else if (isSoloPhd) {
+    personaText = '博士独作策略：985/211可冲C刊，普通高校别死等顶级刊；主攻和保底版本提前改好。';
+  } else if (isPhdWithSup) {
+    personaText = '博士+导师策略：导师资源可提升冲刺层成功率，主攻层建议用导师通讯作者。';
+  } else if (isPostdoc) {
+    personaText = '博士后策略：出站时间窗口紧，冲刺不超过1个审稿周期，优先保证见刊速度。';
+  } else if (isLecturerPhd) {
+    personaText = '讲师申博/跳槽策略：优先保证可见成果，冲刺不超过一个审稿窗口，主攻刊兼顾速度与级别。';
+  } else if (isLecturer) {
+    personaText = '讲师策略：核心期刊竞争激烈，主攻AMI核心/北核，保底确保有刊可发。';
+  } else if (isAssociateProf) {
+    personaText = '副教授策略：可冲C刊/一级期刊，主攻层选领域内有影响力的刊物，保底层兜底即可。';
+  } else if (isProf) {
+    personaText = '教授策略：冲刺领域顶刊，主攻层保口碑，收尾备选确保万无一失。';
   }
 
   const angleRules = [
@@ -3097,7 +3132,7 @@ function buildStrategyPanel(grouped, profile) {
   };
 
   const tierRows = tierPicks.map((tier, idx) => {
-    const wait = tier.primary ? getSwitchDays(tier.primary, tier.key) : null;
+    const wait = tier.picks[0] ? getSwitchDays(tier.picks[0], tier.key) : null;
     const startText = idx === 0 ? '今天' : 'D+' + cumulative;
     const actionText = tier.key === 'reach'
       ? (urgentMode ? '最多等' + fmtDays(wait) + '，无信号即转主攻' : '无回复等' + fmtDays(wait) + '，拒稿当天转主攻')
@@ -3118,8 +3153,7 @@ function buildStrategyPanel(grouped, profile) {
       + '<span style="font-size:0.72rem;color:#666;">⏱ ' + esc(actionText) + '</span>'
       + '</div>'
       + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px;">'
-      + renderMiniCard(tier.picks[0], 0, tier.meta, false)
-      + renderMiniCard(tier.picks[1], 1, tier.meta, true)
+      + tier.picks.map((pick, i) => renderMiniCard(pick, i, tier.meta, i > 0)).join('')
       + '</div>'
       + '</div>'
       + '</div>';
