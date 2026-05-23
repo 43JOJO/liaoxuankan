@@ -28,6 +28,14 @@ const TASKS = [
     needIdCheck: true,
   },
   {
+    label: '外文期刊数据库',
+    sourcePath: path.join(__dirname, 'src', 'foreign.source.js'),
+    outputPath: path.join(__dirname, 'foreign.js'),
+    globalVar: 'foreignJournalDatabase',
+    requiredFields: ['id', 'name', 'domains', 'catalogLevel'],
+    needIdCheck: true,
+  },
+  {
     label: '学报数据库',
     sourcePath: path.join(__dirname, 'src', 'xuebao.source.js'),
     outputPath: path.join(__dirname, 'xuebao.js'),

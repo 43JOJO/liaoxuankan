@@ -529,13 +529,25 @@ footer {
       <label>关键词 <span class="hint">· 用空格或逗号分隔</span></label>
       <input type="text" id="paper-keywords" placeholder="例：苗族蜡染 非物质文化遗产 活态传承 文创设计">
     </div>
+    <div class="form-group full" id="ahci-english-fields" style="display:none;">
+      <label>English Title <span class="hint">· 英文标题（可选）</span></label>
+      <input type="text" id="paper-title-en" placeholder="e.g. The Aesthetics of Seal Script in Han Dynasty Stone Inscriptions">
+    </div>
+    <div class="form-group full" id="ahci-english-keywords" style="display:none;">
+      <label>English Keywords <span class="hint">· 英文关键词（可选，用逗号或空格分隔）</span></label>
+      <input type="text" id="paper-keywords-en" placeholder="e.g. seal script, calligraphy, Han dynasty, cultural memory">
+    </div>
   </div>
 </div>
 
 <!-- 按钮 -->
-<div class="btn-row">
+<div class="btn-row" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
   <button class="btn btn-primary" id="btn-search">开始匹配期刊</button>
   <button class="btn btn-secondary" id="btn-reset">清空重填</button>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;color:#666;user-select:none;margin-left:8px;">
+    <input type="checkbox" id="ahci-mode" onchange="toggleAhciMode()" style="width:16px;height:16px;cursor:pointer;">
+    🌐 A&HCI 外文模式
+  </label>
 </div>
 
 <!-- 可信度说明 -->
@@ -688,6 +700,7 @@ footer {
 </div>
 
 <script src="journals.js"></script>
+<script src="foreign.js"></script>
 <script src="xuebao.js"></script>
 <script src="pdf.min.js"></script>
 <script src="mammoth.browser.min.js"></script>
@@ -1381,6 +1394,120 @@ function computeDomainMatch(paperText, journal, discipline) {
   }
 
   return Math.min(1, hits / Math.max(1, journal.domains.length + 2));
+}
+
+// ====== 外文期刊匹配 (A&HCI) ======
+function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline) {
+  const toLower = s => String(s || '').toLowerCase();
+  const allText = toLower(paperText + ' ' + paperKeywords);
+
+  // 英文分词
+  const tokens = (allText.match(/[a-z]{3,}/g) || []).map(t => t.toLowerCase());
+  const tokenSet = new Set(tokens);
+
+  // 词组 n-gram
+  const bigrams = new Set();
+  for (let i = 0; i < tokens.length - 1; i++) bigrams.add(tokens[i] + ' ' + tokens[i + 1]);
+
+  // 中→英领域词典
+  const DOMAIN_EN = {
+    '建筑学': ['architecture','architectural','urban','building','landscape','housing','planning'],
+    '设计学': ['design','graphic','industrial','fashion','textile','typography','visual communication','product design'],
+    '艺术学': ['art','art history','visual art','fine art','painting','sculpture','photography','aesthetics','contemporary art','modern art','iconography'],
+    '影视学': ['film','cinema','media','television','screen','moving image','audiovisual','digital media'],
+    '音乐学': ['music','musicology','ethnomusicology','opera','sound','composition','performance'],
+    '舞蹈学': ['dance','choreography','ballet','performance','movement'],
+    '博物馆学': ['museum','museology','curation','curatorial','exhibition'],
+    '考古学': ['archaeology','archaeological','antiquity','material culture','excavation','artifact','ancient'],
+    '文化遗产': ['heritage','cultural heritage','conservation','preservation','cultural property']
+  };
+
+  // 扩展期刊词项：中文 domain → 英文关键词 + 刊名拆词
+  const domains = (journal.domains || []).filter(Boolean);
+  const keywords = (journal.keywords || []).filter(Boolean);
+  const journalTerms = [];
+
+  // 加入中文 domain 对应的英文词
+  for (const d of domains) {
+    const enWords = DOMAIN_EN[d] || [];
+    enWords.forEach(w => journalTerms.push(w));
+  }
+  // 加入已有 keywords
+  keywords.forEach(k => journalTerms.push(toLower(k)));
+  // 从刊名提取英文词 (拆掉标点)
+  const nameWords = toLower(journal.name || '').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4);
+  nameWords.forEach(w => journalTerms.push(w));
+  // 去重
+  const uniqueTerms = [...new Set(journalTerms.filter(t => t.length >= 2))];
+
+  // 覆盖率：期刊词项在论文中命中比例
+  let hits = 0;
+  const matchedKw = [];
+  const unmatchedKw = [];
+  for (const term of uniqueTerms) {
+    let matched = false;
+    if (allText.includes(term)) { matched = true; }
+    else if (term.includes(' ')) {
+      // 词组：检查 bigram 匹配
+      if (bigrams.has(term)) matched = true;
+    } else {
+      // 单词：检查 token 匹配
+      if (tokenSet.has(term)) matched = true;
+    }
+    if (matched) { hits++; matchedKw.push(term); }
+    else unmatchedKw.push(term);
+  }
+
+  const coverageRatio = uniqueTerms.length > 0 ? hits / uniqueTerms.length : 0.3;
+  const coverageScore = coverageRatio * 45;
+
+  // 精度加成：分词 token 直接命中期刊名或领域
+  let precisionBonus = 0;
+  const journalName = toLower(journal.name || '');
+  for (const t of tokens) {
+    if (t.length >= 4 && journalName.includes(t)) precisionBonus += 0.5;
+  }
+  precisionBonus = Math.min(8, precisionBonus);
+
+  // 数据置信度：字段完整度
+  let confidence = 8;
+  if (!journal.reviewCycle || journal.reviewCycle.includes('待核实') || journal.reviewCycle.includes('未公开')) confidence -= 1;
+  if (!journal.pageFee || journal.pageFee.includes('待核实')) confidence -= 1;
+  if (!journal.officialSite) confidence -= 2;
+  if (!journal.frequency || journal.frequency === '待核实') confidence -= 1;
+  if (!journal.keywords || journal.keywords.length === 0) confidence -= 2;
+  confidence = Math.max(2, confidence);
+
+  // 适配分
+  let adaptation = 15;
+  if (journal.wanweiId) adaptation += 3;       // 有万维页面 = 可公开投稿
+  if (journal.reviewCycle && !journal.reviewCycle.includes('待核实') && !journal.reviewCycle.includes('未公开')) adaptation += 2;
+  if (journal.pageFee && journal.pageFee.includes('免费')) adaptation += 2;
+  adaptation = Math.min(25, adaptation);
+
+  const total = coverageScore + precisionBonus + confidence + adaptation;
+  const score = Math.max(0, Math.min(100, Math.round(total)));
+
+  return {
+    score,
+    matchedKeywords: matchedKw,
+    unmatchedKeywords: unmatchedKw,
+    domainBoost: Math.round(coverageRatio * 20),
+    // 兼容中文格式的占位字段
+    ratio: coverageRatio,
+    columnBoost: 0,
+    userKwBoost: Math.round(precisionBonus),
+    coverageScore: Math.round(coverageScore),
+    precisionScore: Math.round(precisionBonus),
+    adaptationScore: Math.round(confidence + adaptation),
+    identityBoost: 0,
+    unitBoost: 0,
+    feeTransparency: 0,
+    transparencyPenalty: 0,
+    geoPenalty: 0,
+    titlePrecision: 0,
+    cnkiPrecision: 0
+  };
 }
 
 // 改进的匹配分数计算
@@ -2489,27 +2616,56 @@ function doSearch() {
   const paperAbstract = $('paper-abstract').value.trim();
   const paperKeywords = $('paper-keywords').value.trim();
 
-  if (!paperTitle && !paperAbstract && !paperKeywords) {
+  if (!paperTitle && !paperAbstract && !paperKeywords && !paperTitleEn && !paperKeywordsEn) {
     alert('请至少填写论文标题、摘要或关键词之一');
     return;
   }
 
+  // AHCI 外文模式：手动开关 + 自动检测
+  const ahciMode = $('ahci-mode') ? $('ahci-mode').checked : false;
+  const paperTitleEn = ($('paper-title-en')?.value || '').trim();
+  const paperKeywordsEn = ($('paper-keywords-en')?.value || '').trim();
+
   const paperText = paperTitle + ' ' + paperAbstract;
+
+  // 语言检测：英文论文自动切换到外文期刊库
+  const engChars = (paperText.match(/[a-zA-Z]/g) || []).length;
+  const chnChars = (paperText.match(/[一-鿿]/g) || []).length;
+  const isEnglish = engChars > chnChars * 2 || (chnChars === 0 && engChars > 20);
+  const useForeign = (ahciMode || isEnglish) && typeof foreignJournalDatabase !== 'undefined';
+  // 外文匹配用合并文本（中文原文 + 英文标题/关键词）
+  const foreignPaperText = paperText + ' ' + paperTitleEn + ' ' + paperKeywordsEn;
+  const activeDatabase = useForeign ? foreignJournalDatabase : journalDatabase;
+  window.isEnglishPaper = useForeign;
+  if (useForeign && typeof foreignJournalDatabase !== 'undefined') {
+    console.log('A&HCI 外文模式，' + foreignJournalDatabase.length + ' 本期刊');
+  }
 
   allResults = [];
 
-  for (const journal of journalDatabase) {
-    const match = computeMatchScore(paperText, paperKeywords, journal, currentDiscipline);
-    if (match.score <= 0) continue;
+  for (const journal of activeDatabase) {
+    let match, tier, constraints;
 
-    const constraints = checkConstraints(journal, profile);
-
-    let tier;
-    if (constraints.blocked) {
-      tier = 'blocked';
+    if (useForeign) {
+      // 外文匹配：computeMatchScoreForeign 替代 computeMatchScore
+      match = computeMatchScoreForeign(foreignPaperText, paperKeywordsEn || paperKeywords, journal, currentDiscipline);
+      if (match.score >= 70)      tier = 'reach';
+      else if (match.score >= 50) tier = 'match';
+      else if (match.score >= 30) tier = 'safe';
+      else continue;
+      constraints = { warnings: [], blocked: false };
     } else {
-      tier = determineTier(match.score, journal);
-      if (!tier) continue;
+      // 中文流程：与原逻辑一致
+      match = computeMatchScore(paperText, paperKeywords, journal, currentDiscipline);
+      if (match.score <= 0) continue;
+
+      constraints = checkConstraints(journal, profile);
+      if (constraints.blocked) {
+        tier = 'blocked';
+      } else {
+        tier = determineTier(match.score, journal);
+        if (!tier) continue;
+      }
     }
 
     allResults.push({
@@ -3054,7 +3210,8 @@ function renderResults(results) {
     }
   }
 
-  resultsCount.innerHTML = `<span style="background:#f5f0eb;color:#8b6914;padding:3px 10px;border-radius:12px;font-size:0.78rem;margin-right:8px;">👤 ${currentUserLabel}</span> 共匹配 ${matchedCount} 本期刊`;
+  const dbLabel = (typeof window !== 'undefined' && window.isEnglishPaper) ? ' 🌐 A&HCI外文库' : '';
+  resultsCount.innerHTML = `<span style="background:#f5f0eb;color:#8b6914;padding:3px 10px;border-radius:12px;font-size:0.78rem;margin-right:8px;">👤 ${currentUserLabel}</span> 共匹配 ${matchedCount} 本期刊${dbLabel}`;
   if (blockedCount > 0) {
     resultsCount.innerHTML += ` <span style="color:#999;font-size:0.8rem;">（${blockedCount}本不匹配）</span>`;
   }
@@ -4635,6 +4792,12 @@ document.getElementById('filter-bar').addEventListener('click', function(e) {
   applyFiltersAndRender();
 });
 
+function toggleAhciMode() {
+  const on = $('ahci-mode').checked;
+  $('ahci-english-fields').style.display = on ? 'flex' : 'none';
+  $('ahci-english-keywords').style.display = on ? 'flex' : 'none';
+}
+
 function toggleAdvanced() {
   const el = $('advanced-fields');
   const btn = $('toggle-advanced');
@@ -4660,6 +4823,9 @@ function resetForm() {
   $('paper-title').value = '';
   $('paper-abstract').value = '';
   $('paper-keywords').value = '';
+  if ($('paper-title-en')) $('paper-title-en').value = '';
+  if ($('paper-keywords-en')) $('paper-keywords-en').value = '';
+  if ($('ahci-mode')) { $('ahci-mode').checked = false; toggleAhciMode(); }
   resultsSection.style.display = 'none';
   $('filter-bar').style.display = 'none';
   allResults = [];

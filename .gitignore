@@ -60,6 +60,11 @@ batch-mini-cnki.js
 merge-retry.js
 scrape-xuebao-eshukan.js
 scrape-xuebao-round2.js
+scrape-ahci-all.js
+scrape-ahci-detail.js
+scrape-ahci-reviews.js
+ahci-*.json
+foreign-integrate.js
 debug-kw.js
 debug-search.js
 test-*.js
