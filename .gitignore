@@ -34,37 +34,11 @@ new-journals-output.json
 *.bak_xb
 *.backup
 
-# === 数据加工工具脚本(本地用,无需公开) ===
-add-xuebao2.js
-apply-patches.js
-dedup.js
-gen-new-journals.js
-sync-cnki.js
-cnki-skill.js
-merge-wanwei-data.js
-scrape-wanweixueshu.js
-rescrape-details.js
-scrape-eshukan.js
-rescrape-eshukan-reviews.js
-rescrape-unmatched-eshukan.js
-rescrape-skipped-eshukan.js
-enrich-journal-data.js
-fix-reviews-data.js
-fix-dirty-now.js
-
-# === 抓取数据(本地使用，不应公开中间产物) ===
+# === 已废弃的旧版爬虫脚本 ===
 batch-scrape-cnki.js
 batch-retry-cnki.js
 batch-update-cnki.js
 batch-mini-cnki.js
-merge-retry.js
-scrape-xuebao-eshukan.js
-scrape-xuebao-round2.js
-scrape-ahci-all.js
-scrape-ahci-detail.js
-scrape-ahci-reviews.js
-ahci-*.json
-foreign-integrate.js
 debug-kw.js
 debug-search.js
 test-*.js
