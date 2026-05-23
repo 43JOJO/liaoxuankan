@@ -1417,6 +1417,32 @@ function computeDomainMatch(paperText, journal, discipline) {
 }
 
 // ====== 外文期刊匹配 (A&HCI) ======
+// 外文期刊：中文学科细分词典（学科推断 + 中文领域直连共用）
+const DOMAIN_CN_TERMS = {
+  '艺术学': ['艺术','美术','绘画','国画','中国画','油画','版画','水墨','工笔','写意','雕塑','书法','篆刻','碑帖','金石','笔墨','书论','美学','审美','图像','艺术史','艺术理论','艺术批评','民间美术','年画','剪纸','壁画','岩画','画论','书画'],
+  '设计学': ['设计','平面设计','视觉传达','工业设计','产品设计','服装设计','纺织','字体','包装','品牌','用户体验','交互设计','环境设计','装饰','文创'],
+  '影视学': ['电影','影视','影像','纪录片','动画','电视','媒介','银幕','蒙太奇','导演','剧作','视听'],
+  '音乐学': ['音乐','声乐','器乐','作曲','和声','曲式','民族音乐','戏曲','歌剧','演奏','乐理','音乐史'],
+  '舞蹈学': ['舞蹈','舞剧','编舞','芭蕾','民间舞','古典舞','律动'],
+  '建筑学': ['建筑','城乡规划','城市规划','景观','园林','营造','聚落','人居','建筑史'],
+  '博物馆学': ['博物馆','策展','展览','展陈','藏品','陈列','美术馆','画廊'],
+  '考古学': ['考古','墓葬','遗址','出土','文物','青铜','陶器','石窟','发掘','简牍','碑刻','三星堆'],
+  '文化遗产': ['非遗','非物质文化遗产','文化遗产','活态传承','传承人','传统工艺','民俗','手工艺','修复']
+};
+
+// 从中文论文文本推断主学科（取命中细分词最多的 domain）
+function inferDisciplineCn(text) {
+  const t = String(text || '').toLowerCase();
+  if (!t) return '';
+  let best = '', bestHits = 0;
+  for (const [domain, terms] of Object.entries(DOMAIN_CN_TERMS)) {
+    let hits = 0;
+    for (const w of terms) if (t.includes(w.toLowerCase())) hits++;
+    if (hits > bestHits) { bestHits = hits; best = domain; }
+  }
+  return bestHits > 0 ? best : '';
+}
+
 function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline) {
   const toLower = s => String(s || '').toLowerCase();
   const allText = toLower(paperText + ' ' + paperKeywords);
@@ -1487,8 +1513,13 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
   let cnDomainBoost = 0;
   const cnText = toLower(paperText + ' ' + paperKeywords + ' ' + (discipline || ''));
   for (const d of domains) {
-    if (discipline && (discipline.includes(d) || d.includes(discipline))) cnDomainBoost = Math.max(cnDomainBoost, 15);
-    else if (cnText.includes(toLower(d))) cnDomainBoost = Math.max(cnDomainBoost, 10);
+    if (discipline && (discipline.includes(d) || d.includes(discipline))) {
+      cnDomainBoost = Math.max(cnDomainBoost, 15);
+    } else if (cnText.includes(toLower(d)) ||
+               (typeof DOMAIN_CN_TERMS !== 'undefined' && (DOMAIN_CN_TERMS[d] || []).some(w => cnText.includes(w.toLowerCase())))) {
+      // 不仅匹配 domain 名本身，也匹配该 domain 下的细分词（书法/篆刻/笔墨…）
+      cnDomainBoost = Math.max(cnDomainBoost, 12);
+    }
   }
 
   // 精度加成：分词 token 命中期刊名
@@ -2649,6 +2680,19 @@ function doSearch() {
   const useForeign = (ahciMode || isEnglish) && typeof foreignJournalDatabase !== 'undefined';
   // 外文匹配用合并文本（中文原文 + 英文标题/关键词）
   const foreignPaperText = paperText + ' ' + paperTitleEn + ' ' + paperAbstractEn + ' ' + paperKeywordsEn;
+
+  // 外文模式：英文三字段全空且正文也无英文 → 无可匹配内容，给引导而非默默 0 结果
+  if (useForeign) {
+    const enTokens = (foreignPaperText.match(/[a-zA-Z]{3,}/g) || []).length;
+    if (!paperTitleEn && !paperAbstractEn && !paperKeywordsEn && enTokens < 3) {
+      alert('外文匹配需至少填写英文标题或关键词；仅填中文可切回中文期刊库');
+      return;
+    }
+  }
+
+  // 中文领域推断：外文模式下从中文标题/摘要/关键词推断学科，喂给"中文领域直连"；中文模式保持原行为
+  currentDiscipline = useForeign ? inferDisciplineCn(paperText + ' ' + paperKeywords) : '';
+
   const activeDatabase = useForeign ? foreignJournalDatabase : journalDatabase;
   window.isEnglishPaper = useForeign;
   if (useForeign && typeof foreignJournalDatabase !== 'undefined') {
