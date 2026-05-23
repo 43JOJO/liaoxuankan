@@ -802,13 +802,17 @@ function extractPaperInfo(fullText, fileName) {
   }
   const searchEnd = absLineIdx > 3 ? absLineIdx : Math.min(15, Math.floor(rawLines.length * 0.2));
 
-  // 策略 A：前 searchEnd 行内，第一个符合标题特征的行（位置优先）
+  // 策略 A：前 searchEnd 行内，挑"最像标题"的行——更长 + 更靠前，而非第一个命中
   let bestTitle = '';
+  let bestTitleScore = -1;
   for (let i = 0; i < searchEnd; i++) {
     const line = rawLines[i];
-    if (!skipMeta(line) && looksLikeTitle(line)) {
+    if (skipMeta(line) || !looksLikeTitle(line)) continue;
+    // 标题通常比页眉/栏目名长；靠前的同长行略加权
+    const score = line.length - i * 0.5;
+    if (score > bestTitleScore) {
+      bestTitleScore = score;
       bestTitle = line;
-      break;
     }
   }
 
@@ -823,14 +827,14 @@ function extractPaperInfo(fullText, fileName) {
     }
   }
 
-  // 策略 C：文件名作为最终兜底/校正
+  // 策略 C：文件名仅作最终兜底——只有"完全提取不到"或提取结果明显是正文垃圾时才用
+  // 注意：去掉了原来的 length>60 触发条件，长而干净的标题不再被文件名顶替
   if (fileNameTitle) {
-    const docTitleLooksBad = !bestTitle ||
-      bestTitle.length > 60 ||
+    const docTitleIsJunk = !!bestTitle && (
       /^(然而|但是|因此|所以|此外|另外|当然|事实上|不过|根据|通过)/.test(bestTitle) ||
       /[。！]$/.test(bestTitle) ||
-      (bestTitle.match(/[，。；]/g) || []).length >= 3;
-    if (docTitleLooksBad) bestTitle = fileNameTitle;
+      (bestTitle.match(/[，。；]/g) || []).length >= 3);
+    if (!bestTitle || docTitleIsJunk) bestTitle = fileNameTitle;
   }
 
   if (bestTitle) title = bestTitle.replace(/^[【\[\s]+/, '').replace(/[】\]\s]+$/, '');
@@ -874,10 +878,16 @@ function extractPaperInfo(fullText, fileName) {
     },
   ];
 
+  // 后文标记：关键词区一旦撞上这些词，说明已越界进入正文/著录信息，就地截断
+  const KW_STOP = /(作者简介|作者单位|参考文献|引用格式|引文格式|基金项目|收稿日期|中图分类号?|文献标[识志]码|文章编号|DOI\b|引\s*言|前\s*言|绪\s*论|正\s*文|[一二三四五六七八九十]\s*[、．.])/i;
   for (const attempt of kwAttempts) {
     const result = attempt();
     if (result && result.trim().length > 2) {
       let raw = result.trim();
+      // 1) 先在后文标记处截断（防止无终止标记的论文里关键词贪婪吞入正文/参考文献/文件名拼接）
+      const stopHit = raw.search(KW_STOP);
+      if (stopHit > 0) raw = raw.substring(0, stopHit);
+      // 2) 遇到英文（Keywords/Abstract 等）处截断
       const enIdx = raw.search(/[\s.。；;]*[A-Za-z]/);
       if (enIdx > 3) raw = raw.substring(0, enIdx);
       keywords = raw
@@ -887,7 +897,8 @@ function extractPaperInfo(fullText, fileName) {
         .replace(/[\.。\s]+$/, '')
         .trim();
       keywords = keywords.replace(/[：:]/g, ' ').replace(/[\.。\s]+$/, '').replace(/\s+/g, ' ').trim();
-      if (keywords.length > 200) keywords = keywords.substring(0, 200);
+      // 3) 硬上限 150 字兜底，并避免在词中间截断
+      if (keywords.length > 150) keywords = keywords.substring(0, 150).replace(/\s+\S*$/, '').trim();
       break;
     }
   }
