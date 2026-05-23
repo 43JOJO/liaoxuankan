@@ -3102,7 +3102,9 @@ function buildStrategyPanel(grouped, profile) {
   const primaryPlan = tierPicks.map(x => x.picks[0]).filter(Boolean);
 
   let personaText = '建议采用单篇顺序投稿：首投最有价值的一本，同时备好主攻和保底版本。';
-  if (urgentMode) {
+  if (isForeignMode) {
+    personaText = '外刊按选题契合度排序，建议先投最契合的 1–2 本；审稿期较长（2–6个月），避免同时多投；投稿前按目标刊体例改写摘要与结构。';
+  } else if (urgentMode) {
     personaText = '紧迫模式：目标3个月内见录用信号，优先选审稿快/出刊频率高的主攻刊，冲刺刊最多等一个短窗口。';
   } else if (isSoloBachelor) {
     personaText = '本科生独作策略：核心期刊难度极大，主攻普刊和AMI入库刊；有导师背书可提高一档。';
