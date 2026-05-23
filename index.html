@@ -1464,7 +1464,7 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
     '建筑学': ['architecture','architectural','urban','building','landscape','housing','planning','spatial','built environment'],
     '设计学': ['design','graphic','industrial','fashion','textile','typography','visual communication','product design','interior design'],
     '艺术学': ['art','art history','visual art','fine art','painting','sculpture','photography','aesthetics','contemporary art','modern art','iconography','calligraphy','seal script','ink painting','chinese painting','asian art','chinese art','east asian art','buddhist art','printmaking','drawing','decorative arts','craft','ceramics','ceramic','textile art','peasant','farmer','folk art','rural art','vernacular','artisan','handicraft'],
-    '影视学': ['film','cinema','media','television','screen','moving image','audiovisual','digital media','documentary','animation','digital','generative','AI','artificial intelligence','technology','innovation'],
+    '影视学': ['film','cinema','media','television','screen','moving image','audiovisual','digital media','documentary','animation'],
     '音乐学': ['music','musicology','ethnomusicology','opera','sound','composition','performance','musical','orchestra'],
     '舞蹈学': ['dance','choreography','ballet','performance','movement','theater','theatre'],
     '博物馆学': ['museum','museology','curation','curatorial','exhibition','gallery','collecting','collection'],
@@ -1497,12 +1497,12 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
   const unmatchedKw = [];
   for (const term of uniqueTerms) {
     let matched = false;
-    if (allText.includes(term)) { matched = true; }
-    else if (term.includes(' ')) {
-      // 词组：检查 bigram 匹配
-      if (bigrams.has(term)) matched = true;
+    if (term.includes(' ')) {
+      // 词组：整串或 bigram 命中
+      if (allText.includes(term) || bigrams.has(term)) matched = true;
     } else {
-      // 单词：检查 token 匹配
+      // 单词：必须整词命中（token），不再用 substring
+      // 避免 'ai' 命中 painting、'art' 命中 artificial 这类子串误配
       if (tokenSet.has(term)) matched = true;
     }
     if (matched) { hits++; matchedKw.push(term); }
