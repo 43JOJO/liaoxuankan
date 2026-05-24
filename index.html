@@ -418,7 +418,7 @@ footer {
   <button type="button" id="toggle-advanced" class="toggle-advanced" onclick="toggleAdvanced()">▸ 更多筛选条件（预算、时间、基金、省份…）</button>
   <div class="form-grid col-3" id="advanced-fields" style="display:none;">
     <div class="form-group">
-      <label>版面费预算</label>
+      <label>版面费预算 <span class="ahci-na-note" style="display:none;font-size:0.72rem;color:#bbb;font-weight:400;">· 外文模式下不参与筛选</span></label>
       <select id="profile-budget">
         <option value="">不限</option>
         <option value="0">仅免费期刊</option>
@@ -429,7 +429,7 @@ footer {
       </select>
     </div>
     <div class="form-group">
-      <label>时间要求 <span class="hint">· 录用见刊期望</span></label>
+      <label>时间要求 <span class="hint">· 录用见刊期望</span> <span class="ahci-na-note" style="display:none;font-size:0.72rem;color:#bbb;font-weight:400;">· 外文模式下不参与筛选</span></label>
       <select id="profile-timeline">
         <option value="">不限</option>
         <option value="3">急（3 个月内）</option>
@@ -525,6 +525,7 @@ footer {
         <button type="button" id="mode-ahci" onclick="setDbMode(true)" style="padding:7px 16px;border:none;background:#fff;color:#666;cursor:pointer;">🌐 A&HCI 外文库</button>
       </div>
       <span id="ahci-hint" style="display:none;margin-left:10px;font-size:0.78rem;color:#8b6914;">匹配以<b>英文字段</b>为准，中文仅作参考（可不填）</span>
+      <div style="margin-top:5px;font-size:0.74rem;color:#999;line-height:1.5;">中文期刊库：投中文论文，按知网/CSSCI 目录匹配国内刊；A&HCI 外文库：投英文论文，匹配 A&HCI（艺术与人文引文索引）收录的国际刊。</div>
     </div>
     <div class="form-group full" id="cn-title">
       <label>论文标题</label>
@@ -642,8 +643,8 @@ footer {
 
     <div id="results-empty" class="empty-state" style="display:none;">
       <div class="icon">📭</div>
-      <p>没有匹配到合适的期刊</p>
-      <p style="font-size:0.85rem;color:#999;margin-top:-8px;">试试放宽条件或调整关键词，或查看下方的【综合学报推荐池】</p>
+      <p id="empty-title">没有匹配到合适的期刊</p>
+      <p id="empty-hint" style="font-size:0.85rem;color:#999;margin-top:-8px;">试试放宽条件或调整关键词，或查看下方的【综合学报推荐池】</p>
       <div style="margin-top:24px;padding-top:18px;border-top:1px dashed #e0d5c7;max-width:400px;margin-left:auto;margin-right:auto;">
         <p style="font-size:0.88rem;color:#8b6914;font-style:italic;line-height:1.7;">
           ✨ 投稿路上不易，但别让你的研究被埋没。
@@ -3339,8 +3340,13 @@ function renderResults(results) {
     }
   }
 
-  const dbLabel = (typeof window !== 'undefined' && window.isEnglishPaper) ? ' 🌐 A&HCI外文库' : '';
-  resultsCount.innerHTML = `<span style="background:#f5f0eb;color:#8b6914;padding:3px 10px;border-radius:12px;font-size:0.78rem;margin-right:8px;">👤 ${currentUserLabel}</span> 共匹配 ${matchedCount} 本期刊${dbLabel}`;
+  const _fgMode = (typeof window !== 'undefined' && window.isEnglishPaper);
+  const dbLabel = _fgMode ? ' 🌐 A&HCI外文库' : '';
+  // 外文不看身份门槛，用中性徽标替代"未设置身份"
+  const idBadge = _fgMode
+    ? `<span style="background:#f5f0eb;color:#8b6914;padding:3px 10px;border-radius:12px;font-size:0.78rem;margin-right:8px;">🌐 外文模式 · 不限身份</span>`
+    : `<span style="background:#f5f0eb;color:#8b6914;padding:3px 10px;border-radius:12px;font-size:0.78rem;margin-right:8px;">👤 ${currentUserLabel}</span>`;
+  resultsCount.innerHTML = `${idBadge} 共匹配 ${matchedCount} 本期刊${dbLabel}`;
   if (blockedCount > 0) {
     resultsCount.innerHTML += ` <span style="color:#999;font-size:0.8rem;">（${blockedCount}本不匹配）</span>`;
   }
@@ -3365,11 +3371,24 @@ function renderResults(results) {
   // 推荐结果较少时主动引导学报池
   const xuebaoSection = document.getElementById('xuebao-section');
   const hasXuebao = xuebaoSection && xuebaoSection.style.display !== 'none';
-  if (matchedCount > 0 && matchedCount < 5 && hasXuebao) {
+  const isForeignResults = (typeof window !== 'undefined' && window.isEnglishPaper);
+  if (matchedCount > 0 && matchedCount < 5 && isForeignResults) {
+    // 外文无学报池，给外文专用引导
+    resultsCount.innerHTML += `<div style="margin-top:8px;font-size:0.82rem;color:#8b6914;">💡 结果较少？可放宽英文关键词，或<a href="#" onclick="setDbMode(false);return false;" style="color:var(--primary);font-weight:600;text-decoration:none;">切回中文期刊库 →</a></div>`;
+  } else if (matchedCount > 0 && matchedCount < 5 && hasXuebao) {
     resultsCount.innerHTML += `<div style="margin-top:8px;font-size:0.82rem;color:#8b6914;">💡 推荐结果较少？<a href="#xuebao-section" onclick="document.getElementById('xuebao-section').scrollIntoView({behavior:'smooth'});return false;" style="color:var(--primary);font-weight:600;text-decoration:none;">查看综合学报推荐 ↓</a></div>`;
   }
 
-  resultsEmpty.style.display = (matchedCount === 0 && blockedCount === 0) ? 'block' : 'none';
+  const _emptyShown = (matchedCount === 0 && blockedCount === 0);
+  resultsEmpty.style.display = _emptyShown ? 'block' : 'none';
+  if (_emptyShown) {
+    const _fg = (typeof window !== 'undefined' && window.isEnglishPaper);
+    const et = $('empty-title'), eh = $('empty-hint');
+    if (et) et.textContent = _fg ? '该选题在 A&HCI 库中暂无对口期刊' : '没有匹配到合适的期刊';
+    if (eh) eh.innerHTML = _fg
+      ? '试试补充英文标题/关键词、放宽用词；该方向若在 A&HCI 收录较少，也可<a href="#" onclick="setDbMode(false);return false;" style="color:var(--primary);font-weight:600;text-decoration:none;">切回中文期刊库 →</a>'
+      : '试试放宽条件或调整关键词，或查看下方的【综合学报推荐池】';
+  }
 
   resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -4971,6 +4990,13 @@ function toggleAhciMode() {
     ma.style.fontWeight = on ? '600' : '400';
   }
   if ($('ahci-hint')) $('ahci-hint').style.display = on ? 'inline' : 'none';
+
+  // 预算/时限：外文流程绕过 checkConstraints，不参与筛选 → 提示 + 置灰
+  document.querySelectorAll('.ahci-na-note').forEach(el => { el.style.display = on ? 'inline' : 'none'; });
+  ['profile-budget', 'profile-timeline'].forEach(id => {
+    const el = $(id);
+    if (el) { el.disabled = on; el.style.opacity = on ? '0.5' : ''; }
+  });
 
   // 英文字段：外文模式显示并升为主字段（order 排到中文之前）
   ['ahci-english-title','ahci-english-abstract','ahci-english-keywords'].forEach((id, i) => {
