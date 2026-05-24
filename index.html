@@ -637,7 +637,7 @@ footer {
 
     <!-- 不匹配 -->
     <div id="tier-blocked-section" style="display:none;">
-      <h4 style="color:#999;font-size:0.95rem;margin-bottom:8px;">不匹配 — 身份或条件不满足期刊要求</h4>
+      <h4 style="color:#999;font-size:0.95rem;margin-bottom:8px;">⛔ 暂不满足条件 — 选题对口，但身份/语言/预算等门槛未达</h4>
       <div id="tier-blocked"></div>
     </div>
 
@@ -2706,31 +2706,24 @@ function doSearch() {
 
   allResults = [];
 
+  // tier 统一相关性定档：tier 只看 matchScore（55/40/25），<25 不展示；blocked 单记硬约束。
+  const tierByScore = (s) => s >= 55 ? 'reach' : s >= 40 ? 'match' : s >= 25 ? 'safe' : null;
+
   for (const journal of activeDatabase) {
-    let match, tier, constraints;
+    let match, constraints;
 
     if (useForeign) {
-      // 外文匹配：computeMatchScoreForeign 替代 computeMatchScore
       match = computeMatchScoreForeign(foreignPaperText, paperKeywordsEn || paperKeywords, journal, currentDiscipline);
-      // 外文分数比中文压缩，阈值相应下调，避免全部挤进 safe 一档
-      if (match.score >= 55)      tier = 'reach';
-      else if (match.score >= 40) tier = 'match';
-      else if (match.score >= 25) tier = 'safe';
-      else continue;
       constraints = { warnings: [], blocked: false };
     } else {
-      // 中文流程：与原逻辑一致
       match = computeMatchScore(paperText, paperKeywords, journal, currentDiscipline);
       if (match.score <= 0) continue;
-
       constraints = checkConstraints(journal, profile);
-      if (constraints.blocked) {
-        tier = 'blocked';
-      } else {
-        tier = determineTier(match.score, journal);
-        if (!tier) continue;
-      }
     }
+
+    const relTier = tierByScore(match.score);
+    if (!relTier) continue;
+    const tier = constraints.blocked ? 'blocked' : relTier;
 
     allResults.push({
       journal,
@@ -2739,6 +2732,7 @@ function doSearch() {
       matchedKeywords: match.matchedKeywords,
       unmatchedKeywords: match.unmatchedKeywords,
       tier,
+      relTier,
       warnings: constraints.warnings,
       blocked: constraints.blocked
     });
@@ -3283,31 +3277,23 @@ function renderResults(results) {
 
   // tier 改为表达"论文↔期刊相关性"：按原始 matchScore 重新归档（不改 determineTier）。
   // 关键：把新档位写回 r.tier，让卡片配色/标签、详情弹窗、策略面板的 tier 依赖全部自洽。
-  const _foreignGroup = (typeof window !== 'undefined' && window.isEnglishPaper);
-  const TIER_TH = { reach: 55, match: 40, safe: 25 }; // 中外文同口径（外文此前已调成 55/40/25）
+  // tier 已在 doSearch 按 matchScore 定档，这里直接分组；blocked = 硬约束拦截。
   const grouped = { reach: [], match: [], safe: [], blocked: [] };
   for (const r of results) {
-    // 要求4：硬性约束拦截的仍归 blocked，不因分数高而放行
-    if (r.tier === 'blocked' || r.blocked) { grouped.blocked.push(r); continue; }
-    const s = r.matchScore;
-    let t;
-    if (s >= TIER_TH.reach) t = 'reach';
-    else if (s >= TIER_TH.match) t = 'match';
-    else if (s >= TIER_TH.safe) t = 'safe';
-    else continue; // <25% 视为不相关，不展示（非硬拦）
-    r.tier = t;            // 写回，保证下游 tier 依赖一致
-    grouped[t].push(r);
+    grouped[(r.tier === 'blocked' || r.blocked) ? 'blocked' : r.tier].push(r);
   }
 
-  // 防"全挤一档"：某档 >15 本且其上一档为空时，把该档最高分的最多 3 本提到上一档
+  // 防全挤一档：逐档冒泡，某档 >15 且以上各档全空时提最高分最多 3 本上去
   const _tierOrder = ['reach', 'match', 'safe'];
   for (let _i = 1; _i < _tierOrder.length; _i++) {
-    const _upper = _tierOrder[_i - 1], _cur = _tierOrder[_i];
-    if (grouped[_cur].length > 15 && grouped[_upper].length === 0) {
+    const _cur = _tierOrder[_i];
+    const _upperEmpty = _tierOrder.slice(0, _i).every(k => grouped[k].length === 0);
+    if (grouped[_cur].length > 15 && _upperEmpty) {
       grouped[_cur].sort((a, b) => b.matchScore - a.matchScore);
       const _promote = grouped[_cur].splice(0, Math.min(3, grouped[_cur].length));
-      _promote.forEach(r => { r.tier = _upper; });
-      grouped[_upper].push(..._promote);
+      const _target = _tierOrder[_i - 1];
+      _promote.forEach(r => { r.tier = _target; });
+      grouped[_target].push(..._promote);
     }
   }
 
@@ -3386,7 +3372,7 @@ function renderResults(results) {
     : `<span style="background:#f5f0eb;color:#8b6914;padding:3px 10px;border-radius:12px;font-size:0.78rem;margin-right:8px;">👤 ${currentUserLabel}</span>`;
   resultsCount.innerHTML = `${idBadge} 共匹配 ${matchedCount} 本期刊${dbLabel}`;
   if (blockedCount > 0) {
-    resultsCount.innerHTML += ` <span style="color:#999;font-size:0.8rem;">（${blockedCount}本不匹配）</span>`;
+    resultsCount.innerHTML += ` <span style="color:#999;font-size:0.8rem;">（另有 ${blockedCount} 本选题对口但身份/条件暂不满足，见下方）</span>`;
   }
 
   // 投稿策略建议（先清理旧的）
