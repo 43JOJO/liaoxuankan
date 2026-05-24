@@ -84,7 +84,7 @@ async function main() {
 
   const context = await chromium.launchPersistentContext(
     config.profileDir('cnki'),
-    { headless: false, channel: 'chrome', viewport: config.browser.viewport, locale: config.browser.locale, slowMo: 200 }
+    { headless: false, viewport: config.browser.viewport, locale: config.browser.locale, slowMo: 200 }
   );
   await context.addInitScript(config.stealthInit);
 
@@ -139,7 +139,7 @@ async function scrapeJournal(context, journal) {
   const allArticles = [];
 
   const goto = (url, opts = {}) =>
-    withRetry(() => page.goto(url, { waitUntil: 'networkidle', timeout: 20000, ...opts }),
+    withRetry(() => page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000, ...opts }),
       { tries: 3, baseMs: 3000, onRetry: (e, n) => console.log('  retry goto #' + n + ' (' + e.message + ')') });
 
   try {
@@ -165,6 +165,9 @@ async function scrapeJournal(context, journal) {
       }
     }
     await jitter(3000);
+    // CNKI 搜索结果靠 AJAX 加载，domcontentloaded 后内容可能尚未就绪，
+    // 多等几秒防止 isBlocked 因短文本误判为"验证码/拦截"
+    await page.waitForTimeout(5000);
 
     // 验证码：跨平台提醒 + 轮询人工解（替代 PowerShell 弹窗，去掉 shell 注入）
     if (await antibot.isBlocked(page)) {

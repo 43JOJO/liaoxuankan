@@ -3042,16 +3042,29 @@ function buildStrategyPanel(grouped, profile) {
     if (role === 'match') roleBias += item.tier === 'match' ? 8 : 0;
     if (role === 'safe') roleBias += item.tier === 'safe' ? 12 : 0;
 
+    // 录用率极低（有≥3条真实点评且 <5%）重罚：不该被选成首选，更不能盖过更相关的刊
+    let acceptPenalty = 0;
+    if (stats.total >= 3 && stats.acceptanceRate !== undefined && stats.acceptanceRate < 5) acceptPenalty = -40;
+
     if (urgentMode) {
-      return item.matchScore * 0.36 + rep * 0.14 + ar * 0.14 + speedScore * 0.28 + feeScore * 0.08 + roleBias;
+      return item.matchScore * 0.50 + rep * 0.10 + ar * 0.12 + speedScore * 0.24 + feeScore * 0.06 + roleBias + acceptPenalty;
     }
-    return item.matchScore * 0.44 + rep * 0.22 + ar * 0.16 + speedScore * 0.12 + feeScore * 0.06 + roleBias;
+    return item.matchScore * 0.60 + rep * 0.16 + ar * 0.12 + speedScore * 0.08 + feeScore * 0.04 + roleBias + acceptPenalty;
   };
 
-  const pickBest = (list, n, role) => [...list]
-    .filter(r => r && r.journal && r.matchScore >= 15)
-    .sort((a, b) => scoreItem(b, role) - scoreItem(a, role))
-    .slice(0, n);
+  const pickBest = (list, n, role) => {
+    const lowAccept = r => {
+      const s = r.journal && r.journal.wanweiReviewStats;
+      return s && s.total >= 3 && s.acceptanceRate !== undefined && s.acceptanceRate < 5;
+    };
+    let pool = list.filter(r => r && r.journal && r.matchScore >= 15);
+    // 优先排除录用率极低的刊；若排除后该层就空了，再放回（保证面板不至于无刊可选）
+    const healthy = pool.filter(r => !lowAccept(r));
+    if (healthy.length > 0) pool = healthy;
+    return pool
+      .sort((a, b) => scoreItem(b, role) - scoreItem(a, role))
+      .slice(0, n);
+  };
 
   const isForeignMode = (typeof window !== 'undefined' && window.isEnglishPaper);
   const tierMeta = isForeignMode ? {
