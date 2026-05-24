@@ -4052,32 +4052,35 @@ function showDetail(journal, item) {
     ${item ? `<p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">匹配度：${item.matchScore}%（命中 ${item.matchedKeywords.length} 个关键词${item.domainBoost ? '，领域加成 +' + item.domainBoost + '%' : ''}）</p>` : ''}
     <dl>
       <dt>ISSN</dt><dd>${journal.issn || '<span style="color:#999;">详情见官网</span>'}</dd>
-      <dt>CN</dt><dd>${journal.cn || '-'}</dd>
+      ${isForeign ? '' : `<dt>CN</dt><dd>${journal.cn || '-'}</dd>`}
       <dt>收录级别</dt><dd>${journal.catalogLevel}</dd>
-      <dt>影响因子</dt><dd>${journal.impactFactor || '-'}</dd>
-      <dt>出刊频率</dt><dd>${journal.frequency || '-'}${journal.articlesPerIssue ? ' · 约' + journal.articlesPerIssue + '篇/期' : ''}</dd>
-      <dt>审稿周期</dt><dd>${journal.reviewCycle || '<span style="color:#999;">详情见官网</span>'}</dd>
-      <dt>版面费</dt><dd>${journal.pageFee || '无版面费'}</dd>
+      ${isForeign ? '' : `<dt>影响因子</dt><dd>${journal.impactFactor || '-'}</dd>`}
+      <dt>出刊频率</dt><dd>${journal.frequency || '<span style="color:#999;">详情见官网</span>'}${journal.articlesPerIssue ? ' · 约' + journal.articlesPerIssue + '篇/期' : ''}</dd>
+      <dt>审稿周期</dt><dd>${(isForeign && (!journal.reviewCycle || /未公开|不适用|待核实/.test(journal.reviewCycle))) ? '<span style="color:#999;">详情见官网</span>' : (journal.reviewCycle || '<span style="color:#999;">详情见官网</span>')}</dd>
+      ${isForeign
+        ? `<dt>OA类型</dt><dd><strong>${journal.oaType || '<span style="color:#999;">详情见官网</span>'}</strong></dd>
+      <dt>版面费/APC</dt><dd>${journal.pageFee || '<span style="color:#999;">详情见官网</span>'}</dd>`
+        : `<dt>版面费</dt><dd>${journal.pageFee || '无版面费'}</dd>
       <dt>起发版数</dt><dd>${journal.minPages ? journal.minPages + '版起发' : '<span style="color:#999;">详情见官网</span>'}</dd>
       <dt>每版字符</dt><dd>${journal.charsPerPage || '<span style="color:#999;">详情见官网</span>'}</dd>
-      <dt>OA类型</dt><dd>${journal.oaType}</dd>
+      <dt>OA类型</dt><dd>${journal.oaType}</dd>`}
       <dt>收稿语言</dt><dd>${journal.language}</dd>
-      <dt>作者要求</dt><dd>${journal.authorRequirement || '无特殊要求'}${journal.requiresFunding ? ' · 需基金支持' : ''}</dd>
-      <dt>单位偏好</dt><dd>${journal.unitPreference || '无'}</dd>
+      <dt>作者要求</dt><dd>${journal.authorRequirement || '无特殊要求'}${(!isForeign && journal.requiresFunding) ? ' · 需基金支持' : ''}</dd>
+      ${isForeign ? '' : `<dt>单位偏好</dt><dd>${journal.unitPreference || '无'}</dd>`}
       <dt>投稿方式</dt><dd>${journal.submissionMethod || '在线投稿'}${journal.submissionSystem ? ' · ' + journal.submissionSystem : ''}${journal.submissionEmail ? '<br>📧 ' + journal.submissionEmail : ''}</dd>
       ${journal.submissionUrl ? `<dt>投稿网址</dt><dd><a href="${journal.submissionUrl}" target="_blank" rel="noopener" style="color:var(--primary);">${journal.submissionUrl}</a></dd>` : ''}
-      <dt>官网</dt><dd>${journal.officialSite ? `<a href="${journal.officialSite}" target="_blank" rel="noopener" style="color:var(--primary);">${journal.officialSite}</a>` : '无'}</dd>
+      <dt>官网</dt><dd>${journal.officialSite ? `<a href="${journal.officialSite}" target="_blank" rel="noopener" style="color:var(--primary);font-weight:${isForeign ? '700' : '400'};">${journal.officialSite}${isForeign ? ' ↗' : ''}</a>` : '<span style="color:#999;">详情见官网</span>'}</dd>
     </dl>
-    ${buildCnkiDataPanel(journal)}
-    ${buildReputationBadge(journal)}
-    ${buildWanweiPanel(journal)}
-    ${buildAuthorComposition(journal)}
+    ${isForeign ? '' : buildCnkiDataPanel(journal)}
+    ${isForeign ? '' : buildReputationBadge(journal)}
+    ${isForeign ? '' : buildWanweiPanel(journal)}
+    ${isForeign ? '' : buildAuthorComposition(journal)}
     ${item ? buildUserMatchInsight(journal, window.currentProfile || {}) : ''}
     ${item ? buildColumnMatch(journal, item) : ''}
     ${journal.realAuthorProfile ? `<div class="notes-box" style="background:#fff8e1;border-color:#f0e4ce;color:#8b6914;"><strong>实际作者画像：</strong>${journal.realAuthorProfile}</div>` : ''}
     ${journal.preferredTopics ? `<div class="notes-box" style="background:#f0f4ff;border-color:#d0ddf4;color:#2c5f8a;"><strong>收稿倾向：</strong>${journal.preferredTopics}</div>` : ''}
     <div class="notes-box">
-      <strong>备注：</strong>${journal.notes}
+      <strong>备注：</strong>${journal.notes || '<span style="color:#999;">暂无</span>'}
     </div>
     ${item && item.warnings.length > 0 ? `<div class="filter-note" style="margin-top:10px;">⚠ 注意：${item.warnings.join('；')}</div>` : ''}
     <hr style="margin:16px 0 10px;border:none;border-top:1px dashed #e0d5c7;">
