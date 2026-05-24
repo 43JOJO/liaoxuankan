@@ -1424,7 +1424,7 @@ function computeDomainMatch(paperText, journal, discipline) {
 // ====== 外文期刊匹配 (A&HCI) ======
 // 外文期刊：中文学科细分词典（学科推断 + 中文领域直连共用）
 const DOMAIN_CN_TERMS = {
-  '艺术学': ['艺术','美术','绘画','国画','中国画','油画','版画','水墨','工笔','写意','雕塑','书法','篆刻','碑帖','金石','笔墨','书论','美学','审美','图像','艺术史','艺术理论','艺术批评','民间美术','年画','剪纸','壁画','岩画','画论','书画'],
+  '艺术学': ['艺术','美术','绘画','国画','中国画','油画','版画','水墨','工笔','写意','雕塑','书法','篆刻','碑帖','金石','笔墨','书论','美学','审美','图像','艺术史','艺术理论','艺术批评','民间美术','农民画','年画','剪纸','壁画','岩画','画论','书画','视觉文化','工艺美术','漆艺','刺绣','染织','文人画','拓片','石窟','敦煌'],
   '设计学': ['设计','平面设计','视觉传达','工业设计','产品设计','服装设计','纺织','字体','包装','品牌','用户体验','交互设计','环境设计','装饰','文创'],
   '影视学': ['电影','影视','影像','纪录片','动画','电视','媒介','银幕','蒙太奇','导演','剧作','视听'],
   '音乐学': ['音乐','声乐','器乐','作曲','和声','曲式','民族音乐','戏曲','歌剧','演奏','乐理','音乐史'],
@@ -1462,15 +1462,15 @@ function computeMatchScoreForeign(paperText, paperKeywords, journal, discipline)
 
   // 中→英领域词典
   const DOMAIN_EN = {
-    '建筑学': ['architecture','architectural','urban','building','landscape','housing','planning','spatial','built environment'],
-    '设计学': ['design','graphic','industrial','fashion','textile','typography','visual communication','product design','interior design'],
-    '艺术学': ['art','art history','visual art','fine art','painting','sculpture','photography','aesthetics','contemporary art','modern art','iconography','calligraphy','seal script','ink painting','chinese painting','asian art','chinese art','east asian art','buddhist art','printmaking','drawing','decorative arts','craft','ceramics','ceramic','textile art','peasant','farmer','folk art','rural art','vernacular','artisan','handicraft'],
+    '建筑学': ['architecture','architectural','urban','building','landscape','housing','planning','spatial','built environment','vernacular architecture','heritage building'],
+    '设计学': ['design','graphic','industrial','fashion','textile','typography','visual communication','product design','interior design','craft design','cultural creative','service design'],
+    '艺术学': ['art','art history','visual art','fine art','painting','sculpture','photography','aesthetics','contemporary art','modern art','iconography','calligraphy','seal script','ink painting','chinese painting','asian art','chinese art','east asian art','buddhist art','printmaking','drawing','decorative arts','craft','ceramics','ceramic','textile art','peasant','farmer','folk art','rural art','vernacular','artisan','handicraft','peasant painting','folk aesthetics','naive art','folk painting','new year painting','papercut','seal carving','epigraphy','stele','rubbing','brushwork','inscription','literati painting','mural','fresco','wall painting','cave art','rock art','petroglyph','dunhuang','visual culture','iconology','pictorial','image','representation','applied arts','lacquer','embroidery','dyeing','folk craft','arts and crafts'],
     '影视学': ['film','cinema','media','television','screen','moving image','audiovisual','digital media','documentary','animation'],
     '音乐学': ['music','musicology','ethnomusicology','opera','sound','composition','performance','musical','orchestra'],
     '舞蹈学': ['dance','choreography','ballet','performance','movement','theater','theatre'],
     '博物馆学': ['museum','museology','curation','curatorial','exhibition','gallery','collecting','collection'],
     '考古学': ['archaeology','archaeological','antiquity','material culture','excavation','artifact','ancient','prehistoric','bronze','dynasty','han dynasty','tang dynasty','ming dynasty','qing dynasty','song dynasty'],
-    '文化遗产': ['heritage','cultural heritage','conservation','preservation','cultural property','intangible','world heritage','restoration','traditional','folk','folklore','peasant','farmer','rural economy','community']
+    '文化遗产': ['heritage','cultural heritage','conservation','preservation','cultural property','intangible','world heritage','restoration','traditional','folk','folklore','peasant','farmer','rural economy','community','intangible cultural heritage','living heritage','transmission','safeguarding','inheritor','traditional craft','revitalization','rural revitalization']
   };
 
   // 扩展期刊词项：中文 domain → 英文关键词 + 刊名拆词
