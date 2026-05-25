@@ -4711,6 +4711,11 @@ function buildWanweiPanel(journal) {
       html += '<span style="color:#999;">难度: ' + dist + '</span>';
     }
     html += '</div>';
+    // 仅有点评条数、无聚合指标（录用率/审稿周期/难度）—— 多见于文艺评论类C刊，万维有原始点评但未聚合评分。说明一句，避免用户误以为数据缺失。
+    var noAgg = (s.acceptanceRate === undefined) && !s.reviewTimeAvg && !s.difficultyDistribution;
+    if (noAgg) {
+      html += '<div style="font-size:0.74rem;color:#999;margin:-4px 0 8px;line-height:1.5;">万维仅收录原始投稿点评、未聚合评分，点击上方链接可查看 ' + (s.total || 0) + ' 条真实投稿经验。</div>';
+    }
   }
 
   if (hasReviews) {
