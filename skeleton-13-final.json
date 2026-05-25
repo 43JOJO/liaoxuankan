@@ -1,0 +1,292 @@
+[
+  {
+    "name": "文学评论",
+    "issn": "0511-4683",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0I-UgY5YAC69uuQEa84PEMJiwQprxEW99MKGfPfdywzlc4VsQvG6lshViOpvFUZHzpI-gzvlCs-7Z1xeHjaKcI4IcwIQcqOvUuoWdd-ivpDqw==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true,
+    "_highRiskName": true
+  },
+  {
+    "name": "中国现代文学研究丛刊",
+    "issn": "1003-0263",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0IA-RBFPzDUICzQEAekN01vchnYLXd5DXgQUlskRGh_8moAIx7Qgc2_MLHZcHTaaFN7U5nvK9_h18U-2rLZbObd8AIXcLPmB1E431M5MGhSrw==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true,
+    "_highRiskName": true
+  },
+  {
+    "name": "中国当代文学研究",
+    "issn": "TODO_ISSN",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0JV4e-8lGuP-7vMfBbbCbImWq57moT4GnsPLp1zExm8XskGDiMZat89cbMIvuFgXFohvw2gyOllJi3rJcHZZaReuiN_j2AbJAvdvjjy6Tm0LQ==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI扩展版",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "当代作家评论",
+    "issn": "1002-1809",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0JOHTeH1VlIpof7lFSLbEmcF0NORql2LIAFhHk5pK9li5kK8WdyOxj1MtIXcaJABbzEz56Q_-sqaLsiKJabUU1vUfoPNeJwVythQJfzhxGMZw==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "当代文坛",
+    "issn": "1006-0820",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0J3OXFwOTkq75T4pSpoPuYFxwPzJ1ksfx7ifjxNb8_e6JI82Dd5FEKUmnzKak8Oqw3cLMODUBw3-ruBFHVFh182ogEnGIKV2AwpQLuNgAB4RA==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "南方文坛",
+    "issn": "1003-7772",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0ILFCE3HQ1ebr7562UGGD92IO-JvFs57t9B2bGuMcAfWWDNoHtOULnsXGVGuhSWmiTOAVNyanNdA--X0psCh0tbbk0z93zb1ekJpazLLSSIvA==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true,
+    "_highRiskName": true
+  },
+  {
+    "name": "小说评论",
+    "issn": "1004-2164",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0L3TV8I7srZKXLmjsLqgYkd_2MgeqlXQDRx24g-8v-6he4hfEt3l5kKSSmPjI8mYTmFlh3ZFH2V_JvOyafbJq5El84hahNAVHm8AHwklK2Cjg==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "扬子江文学评论",
+    "issn": "2096-7977",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0LEs3-7wwQ9nMZRp5diPkzB6OXHCGyt28oiPdTpKJfucjJ4KAkopwZ1G59YUfa0A764dXB6b4byFlWyM7P1YG-3ERzib7abstqKp5qemJ756w==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "新文学史料",
+    "issn": "0257-5647",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0KV2YszBRb3l0ok9_jWM6qbm-Ett6hszO9Im0e_oN1KNl7wEaaVkUa4JFsgwAkmb34U9PQ9sPbMeFsr8VLbK6VMRkSRtRwGlKQxo6b9sdd0ZQ==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "鲁迅研究月刊",
+    "issn": "1003-0638",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0LGUJXgcRaivegv_YOdgkmxLBEUUVNXPtvxYLbKiBy3m7jp6TSsQVOVInlhqbBRDSY-Qu9J7cZ7dnm1gwd6T-rTmfOJd_1qNHaf25KCSU9hSg==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "现代中文学刊",
+    "issn": "1674-7704",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0ISWZLDvjBd0uMVPw5rWNAdk-xIYufFh-QXlBFPdIVeUn4dV9itmmNENkZgjj-mOHqnNPYXq2guvxc4xv3zSi6P8XXGFjmBum3RHFKT3fe6Jw==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  },
+  {
+    "name": "中国文学研究",
+    "issn": "1003-7535",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0JUZGVHoN0-h1JHiDihAteIhOq10WX90yE54Twck_gkzJG39onfxUiAd_wRQYQm-3sgs-12isTabNtkWyHbjFd24K0WAME4MyKYNup9p4BOtQ==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true,
+    "_highRiskName": true
+  },
+  {
+    "name": "文艺理论研究",
+    "issn": "0257-0254",
+    "cnkiCode": null,
+    "detailUrl": "https://navi.cnki.net/knavi/detail?p=E4XFES8K-0KfvpeuWFNJ0Dzv5Eb-nEhUPUqC5SaWMGomn-E-2ASA4QaPDBvs3d1CQ-Me6u_rQHi3n82VUie1qHmUyPlnXmMzL_8n4REFF58owVtR5Sn3NQ==&uniplatform=NZKPT&language=CHS",
+    "catalogLevel": "CSSCI来源刊",
+    "domains": [
+      "文艺学",
+      "中国现当代文学"
+    ],
+    "keywords": [
+      "新大众文艺",
+      "大众文艺",
+      "人民性",
+      "文化主体性",
+      "群众文艺",
+      "网络文艺",
+      "当代文学",
+      "文艺评论"
+    ],
+    "_needScrape": true
+  }
+]
