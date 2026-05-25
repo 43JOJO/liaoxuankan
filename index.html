@@ -34,23 +34,23 @@ body {
   line-height: 1.6;
   min-height: 100vh;
 }
-.container { max-width: 920px; margin: 0 auto; padding: 16px; }
+.container { max-width: 920px; margin: 0 auto; padding: 18px 18px; }
 
 header {
   text-align: center;
   padding: 32px 16px 20px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
+  margin-bottom: 26px;
 }
-header h1 { font-size: 1.8rem; color: var(--primary); font-weight: 700; letter-spacing: 0.05em; }
-header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
+header h1 { font-size: 1.85rem; color: var(--primary); font-weight: 700; letter-spacing: 0.06em; }
+header p { color: var(--text-secondary); margin-top: 10px; font-size: 0.95rem; letter-spacing: 0.02em; }
 
 .section-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--primary);
-  margin-bottom: 12px;
-  padding-bottom: 6px;
+  margin: 4px 0 14px;
+  padding-bottom: 7px;
   border-bottom: 2px solid var(--border);
 }
 
@@ -166,9 +166,9 @@ header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
 /* Buttons */
 .btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 8px; }
 .btn {
-  padding: 10px 32px;
+  padding: 11px 34px;
   border: none;
-  border-radius: 8px;
+  border-radius: 24px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -179,7 +179,7 @@ header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
 .btn-primary:hover { background: var(--primary-light); }
 .btn-secondary { background: #fff; color: var(--primary); border: 1px solid var(--border); }
 .btn-secondary:hover { background: #faf5f5; }
-.btn-sm { padding: 6px 16px; font-size: 0.85rem; }
+.btn-sm { padding: 7px 18px; font-size: 0.85rem; border-radius: 20px; }
 
 /* Filters */
 .trust-filter-bar {
@@ -293,10 +293,10 @@ header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
 }
 .modal {
   background: #fff;
-  border-radius: var(--radius);
+  border-radius: 16px;
   max-width: 600px; width: 100%; max-height: 85vh;
   overflow-y: auto;
-  padding: 24px;
+  padding: 28px 26px;
   position: relative;
 }
 .modal-close {
@@ -305,8 +305,10 @@ header p { color: var(--text-secondary); margin-top: 6px; font-size: 0.95rem; }
   color: var(--text-secondary); line-height: 1;
 }
 .modal h3 { font-size: 1.2rem; margin-bottom: 12px; color: var(--primary); }
-.modal dl { display: grid; grid-template-columns: 80px 1fr; gap: 8px 12px; font-size: 0.9rem; }
-.modal dl dt { font-weight: 600; color: var(--text-secondary); }
+.modal dl { display: grid; grid-template-columns: 76px 1fr 76px 1fr; gap: 10px 14px; font-size: 0.88rem; align-items: baseline;
+  background:#faf7f2; padding:14px 16px; border-radius:12px; }
+@media (max-width: 560px){ .modal dl { grid-template-columns: 72px 1fr; } }
+.modal dl dt { font-weight: 600; color: var(--text-secondary); font-size:0.78rem; }
 .modal dl dd { color: var(--text); }
 /* Institution distribution donut chart */
 .inst-chart-wrap {
@@ -359,7 +361,11 @@ footer {
 <body>
 <div class="container">
 
-<header>
+<header style="position:relative;">
+  <button onclick="clearSiteCache()" title="清除本站缓存并刷新到最新版本"
+    style="position:absolute;top:18px;right:8px;font-size:0.74rem;color:#fff;background:var(--gold);border:none;padding:7px 14px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;letter-spacing:0.02em;">
+    <span style="font-size:0.9rem;line-height:1;">↻</span> 更新到最新
+  </button>
   <h1 id="dream-egg" style="cursor:default;user-select:none;">聊·选刊</h1>
   <p style="margin-bottom:4px;">人文艺术类期刊投稿匹配工具</p>
   <p style="font-size:0.82rem;color:#999;">美术 · 书法 · 非遗 · 美学 · 设计 · 文艺理论 · 民俗 · 民族艺术</p>
@@ -715,6 +721,23 @@ footer {
 <script src="pdf.min.js"></script>
 <script src="mammoth.browser.min.js"></script>
 <script>
+function clearSiteCache(){
+  try {
+    // 注：不清 localStorage——里面是用户的数据纠错反馈(journalDataFeedback)，不该被"更新版本"连带删除。
+    // 只清会导致"看到旧版"的浏览器缓存 / Service Worker。
+    // 若注册过 Service Worker / Cache Storage，一并清（没有则忽略）
+    if (window.caches && caches.keys) {
+      caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(()=>{});
+    }
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
+    }
+  } catch(e){}
+  // 提示用户：JS 清不掉浏览器对网页本身的 HTTP 缓存，硬刷新才彻底
+  alert('已清除本站缓存。\n\n即将刷新。如仍显示旧版本，请按 Ctrl+Shift+R（Mac：Cmd+Shift+R）强制刷新。');
+  // 普通刷新，不改 URL（不加时间戳——本地 file:// 无需绕缓存，线上靠 Cache/SW 清除+硬刷新）
+  location.reload();
+}
 // ==================== 主逻辑 ====================
 
 // DOM
@@ -3031,19 +3054,17 @@ function buildStrategyPanel(grouped, profile) {
     const fee = getMaxFee(j.pageFee);
     const feeScore = fee.unknown ? 40 : fee.max === 0 ? 100 : clamp(100 - fee.max / 80, 0, 100);
 
-    let roleBias = 0;
-    if (role === 'reach') roleBias += item.tier === 'reach' ? 8 : 0;
-    if (role === 'match') roleBias += item.tier === 'match' ? 8 : 0;
-    if (role === 'safe') roleBias += item.tier === 'safe' ? 12 : 0;
+    // 注：tier 现按 matchScore 分档后，pickBest 传入的 list 已是单一档位，
+    // 原 roleBias（item.tier === role 加分）对池内全员恒真、相互抵消，无区分作用，已移除。
 
     // 录用率极低（有≥3条真实点评且 <5%）重罚：不该被选成首选，更不能盖过更相关的刊
     let acceptPenalty = 0;
     if (stats.total >= 3 && stats.acceptanceRate !== undefined && stats.acceptanceRate < 5) acceptPenalty = -40;
 
     if (urgentMode) {
-      return item.matchScore * 0.50 + rep * 0.10 + ar * 0.12 + speedScore * 0.24 + feeScore * 0.06 + roleBias + acceptPenalty;
+      return item.matchScore * 0.50 + rep * 0.10 + ar * 0.12 + speedScore * 0.24 + feeScore * 0.06 + acceptPenalty;
     }
-    return item.matchScore * 0.60 + rep * 0.16 + ar * 0.12 + speedScore * 0.08 + feeScore * 0.04 + roleBias + acceptPenalty;
+    return item.matchScore * 0.60 + rep * 0.16 + ar * 0.12 + speedScore * 0.08 + feeScore * 0.04 + acceptPenalty;
   };
 
   const pickBest = (list, n, role) => {
@@ -3056,7 +3077,12 @@ function buildStrategyPanel(grouped, profile) {
     const healthy = pool.filter(r => !lowAccept(r));
     if (healthy.length > 0) pool = healthy;
     return pool
-      .sort((a, b) => scoreItem(b, role) - scoreItem(a, role))
+      .sort((a, b) => {
+        // 丁方案：策略面板首选按相关性(matchScore)排，与结果列表口径一致；
+        // 仅当 matchScore 相同时，才用综合分(scoreItem：口碑/录用率/速度/费用)打破平局，挑“更好投”的那本。
+        if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+        return scoreItem(b, role) - scoreItem(a, role);
+      })
       .slice(0, n);
   };
 
@@ -3136,6 +3162,11 @@ function buildStrategyPanel(grouped, profile) {
     personaText = '副教授策略：可冲C刊/一级期刊，主攻层选领域内有影响力的刊物，保底层兜底即可。';
   } else if (isProf) {
     personaText = '教授策略：冲刺领域顶刊，主攻层保口碑，收尾备选确保万无一失。';
+  }
+
+  // 高职称（教授/副教授）但本次无"高度契合"刊：tier 按相关性分档后 reach 可能为空，给引导
+  if ((isProf || isAssociateProf) && reach.length === 0 && match.length > 0) {
+    personaText += '（本次按选题相关性暂无"高度契合"刊，可在主攻层中挑影响力最高者作冲刺目标。）';
   }
 
   const angleRules = [
@@ -4016,13 +4047,20 @@ div.innerHTML = `
     	    ${cnkiKwHtml ? cnkiKwHtml : (isForeign ? '' : '<div style="font-size:0.73rem;color:#999;margin-top:2px;">📋 收稿方向</div><div class="jc-keywords">'+kwHtml+'</div>')}
     ${(() => {
       const rep = journal.reputation;
-      if (!rep || rep.score === undefined) return '';
-      const s = rep.score;
-      const bg = s >= 75 ? '#e8f5e9' : s >= 55 ? '#f1f8e9' : s >= 35 ? '#fffde7' : '#fff3e0';
-      const color = s >= 75 ? '#2e7d32' : s >= 55 ? '#558b2f' : s >= 35 ? '#f9a825' : '#e65100';
-      const icon = s >= 75 ? '🌟' : s >= 55 ? '👍' : s >= 35 ? '📝' : '⚠️';
-      const label = s >= 75 ? '口碑优秀' : s >= 55 ? '口碑良好' : s >= 35 ? '口碑一般' : '争议较多';
-      return '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;background:'+bg+';border-radius:6px;font-size:0.78rem;"><span>'+icon+'</span><span style="font-weight:600;color:'+color+';">风评 '+label+' · '+s+'分</span><span style="color:#999;font-size:0.72rem;">— 基于'+rep.sampleSize+'条万维书刊网点评</span></div>';
+      if (rep && rep.score !== undefined) {
+        const s = rep.score;
+        const bg = s >= 75 ? '#e8f5e9' : s >= 55 ? '#f1f8e9' : s >= 35 ? '#fffde7' : '#fff3e0';
+        const color = s >= 75 ? '#2e7d32' : s >= 55 ? '#558b2f' : s >= 35 ? '#f9a825' : '#e65100';
+        const icon = s >= 75 ? '🌟' : s >= 55 ? '👍' : s >= 35 ? '📝' : '⚠️';
+        const label = s >= 75 ? '口碑优秀' : s >= 55 ? '口碑良好' : s >= 35 ? '口碑一般' : '争议较多';
+        return '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;background:'+bg+';border-radius:6px;font-size:0.78rem;"><span>'+icon+'</span><span style="font-weight:600;color:'+color+';">风评 '+label+' · '+s+'分</span><span style="color:#999;font-size:0.72rem;">— 基于'+rep.sampleSize+'条万维书刊网点评</span></div>';
+      }
+      // 无聚合口碑分、但有万维投稿评论数（如新补的13本C刊：万维有原始点评、未聚合成分）→ 显示中性的讨论数信号
+      const st = journal.wanweiReviewStats;
+      if (st && st.total >= 3) {
+        return '<div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;background:#f3f0fa;border-radius:6px;font-size:0.78rem;"><span>💬</span><span style="font-weight:600;color:#6a4ba3;">万维书刊网 '+st.total+' 条投稿评论</span><span style="color:#999;font-size:0.72rem;">— 可前往查看真实投稿经验</span></div>';
+      }
+      return '';
     })()}
     ${reasonHtml}
     ${warningHtml}
