@@ -4125,8 +4125,8 @@ function showDetail(journal, item) {
         : `<dt>版面费</dt><dd>${journal.pageFee || '无版面费'}</dd>
       <dt>起发版数</dt><dd>${journal.minPages ? journal.minPages + '版起发' : '<span style="color:#999;">详情见官网</span>'}</dd>
       <dt>每版字符</dt><dd>${journal.charsPerPage || '<span style="color:#999;">详情见官网</span>'}</dd>
-      <dt>OA类型</dt><dd>${journal.oaType}</dd>`}
-      <dt>收稿语言</dt><dd>${journal.language}</dd>
+      ${journal.oaType ? `<dt>OA类型</dt><dd>${journal.oaType}</dd>` : ''}`}
+      <dt>收稿语言</dt><dd>${journal.language || '<span style="color:#999;">详情见官网</span>'}</dd>
       <dt>作者要求</dt><dd>${journal.authorRequirement || '无特殊要求'}${(!isForeign && journal.requiresFunding) ? ' · 需基金支持' : ''}</dd>
       ${isForeign ? '' : `<dt>单位偏好</dt><dd>${journal.unitPreference || '无'}</dd>`}
       <dt>投稿方式</dt><dd>${journal.submissionMethod || '在线投稿'}${journal.submissionSystem ? ' · ' + journal.submissionSystem : ''}${journal.submissionEmail ? '<br>📧 ' + journal.submissionEmail : ''}</dd>
@@ -4671,24 +4671,27 @@ function buildReputationBadge(journal) {
 function buildWanweiPanel(journal) {
   const reviews = journal.wanweiReviews;
   const hasReviews = reviews && reviews.length > 0;
-  const hasStats = journal.wanweiReviewStats;
+  const hasStats = journal.wanweiReviewStats && journal.wanweiReviewStats.total >= 1;
   const hasWanwei = journal.wanweiId;
 
-  if (!hasWanwei) {
+  if (!hasWanwei && !hasStats && !hasReviews) {
     return '<div style="font-size:0.75rem;color:#bbb;text-align:center;margin:8px 0;">暂无万维书刊网点评数据</div>';
   }
+  const wanweiLink = hasWanwei
+    ? 'https://www.eshukan.com/displayj.aspx?jid=' + journal.wanweiId
+    : 'https://www.eshukan.com/searchresult.aspx?keywords=' + encodeURIComponent(journal.name) + '&etypeid=0';
 
   let html = '';
   html += '<div style="background:#fdf8f0;border:1px solid #f0e4ce;border-radius:8px;padding:12px 14px;margin:10px 0;">';
   html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
   html += '<span style="font-weight:600;color:#8b6914;font-size:0.82rem;">💬 万维书刊网点评</span>';
-  html += '<a href="https://www.eshukan.com/displayj.aspx?jid=' + journal.wanweiId + '" target="_blank" rel="noopener" style="font-size:0.75rem;color:#b8860b;text-decoration:none;font-weight:500;">→ 在万维书刊网查看完整点评</a>';
+  html += '<a href="' + wanweiLink + '" target="_blank" rel="noopener" style="font-size:0.75rem;color:#b8860b;text-decoration:none;font-weight:500;">→ 在万维书刊网查看完整点评</a>';
   html += '</div>';
 
   if (hasStats) {
     var s = journal.wanweiReviewStats;
     html += '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.8rem;margin-bottom:10px;">';
-    html += '<span style="color:#666;">共 <strong>' + (s.total || reviews.length) + '</strong> 条点评</span>';
+    html += '<span style="color:#666;">共 <strong>' + (s.total || (reviews ? reviews.length : 0)) + '</strong> 条点评</span>';
     if (s.reviewTimeAvg) {
       var avgDays = s.reviewTimeAvg;
       var avgDisplay = avgDays >= 60 ? Math.round(avgDays/30) + '个月' : avgDays + '天';
